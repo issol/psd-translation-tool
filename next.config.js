@@ -1,4 +1,13 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {}
+export function webpack(config, { isServer }) {
+  //   if (!isServer) {
+  //     config.module.rules.push({
+  //       test: /\.worker\.ts$/,
+  //       loader: 'worker-loader',
+  //       options: {
+  //         esModule: true,
+  //       },
+  //     })
+  //   }
 
-module.exports = nextConfig
+  return config
+}
