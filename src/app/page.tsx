@@ -151,15 +151,18 @@ export default function Home() {
 
     if (source && target) {
       const syncScroll = (e: any) => {
+        const other = e.target === source ? target : source
         if (isSynced) {
-          target.scrollTop = source.scrollTop
+          other.scrollTop = e.target.scrollTop
         }
       }
 
       source.addEventListener('scroll', syncScroll)
+      target.addEventListener('scroll', syncScroll)
 
       return () => {
         source.removeEventListener('scroll', syncScroll)
+        target.removeEventListener('scroll', syncScroll)
       }
     }
   }, [isSynced])
