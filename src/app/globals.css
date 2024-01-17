@@ -1,3 +1,4 @@
+@import url('https://cdn.jsdelivr.net/gh/moonspam/NanumBarunGothic@latest/nanumbarungothicsubset.css');
 * {
   box-sizing: border-box;
   padding: 0;
@@ -6,8 +7,19 @@
 
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
+  display: flex;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+body {
+  flex: 1;
+  background-repeat: repeat;
+  background-position: center;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' version='1.1' width='24' height='24'><rect x='12' y='0' width='12' height='12' fill='%23e8e8e8'/><rect x='0' y='12' width='12' height='12' fill='%23e8e8e8'/></svg>");
+  color: #24292e;
+  font-family: 'NanumBarunGothic', sans-serif;
 }
 
 body {
@@ -23,4 +35,25 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+section {
+  display: flex;
+  flex: 1;
+  overflow: scroll;
+}
+
+.section-content {
+  padding: 20px;
+  height: min-content;
+}
+.section-content p {
+  color: #24292e;
+}
+.section-content .layer-info {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  text-shadow: 1px 1px 0 #fff;
 }

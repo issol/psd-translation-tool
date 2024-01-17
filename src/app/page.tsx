@@ -7,41 +7,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Psd from '@webtoon/psd'
 import { createMessage, validateMessage } from './messaging'
 
-const baseStyle = {
-  flex: 1,
-  height: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  padding: '20px',
-  borderWidth: 2,
-  borderRadius: 2,
-  borderColor: '#eeeeee',
-  borderStyle: 'dashed',
-  backgroundColor: '#fafafa',
-  color: '#bdbdbd',
-  outline: 'none',
-  transition: 'border .24s ease-in-out',
-}
-
-const focusedStyle = {
-  borderColor: '#2196f3',
-}
-
-const acceptStyle = {
-  borderColor: '#00e676',
-}
-
-const rejectStyle = {
-  borderColor: '#ff1744',
-}
-
 export default function Home() {
-  const [imageSrc, setImageSrc] = useState<string | null>(null)
-  const url = new URL('./worker.ts', import.meta.url)
   const workerRef = useRef<Worker>()
-
-  // const worker = new SimpleWorker()
+  const [isSynced, setIsSynced] = useState(false)
 
   const workerCallback = (
     { data }: MessageEvent<any>,
@@ -58,6 +26,7 @@ export default function Home() {
 
     if (type === 'Layer') {
       const layer = value
+      console.log(layer)
 
       // -- Layers --
       // element.insertAdjacentHTML('beforeend', `<h3>${layer.name}</h3>`)
@@ -66,8 +35,11 @@ export default function Home() {
       //   `<div><p class="layer-info">size : ${layer.width} x ${layer.height} | top: ${layer.top} | left: ${layer.left}</p></div>`,
       // )
       // console.time('Create and append <canvas> for layer')
-      element.appendChild(generateCanvas(layer))
-      console.timeEnd('Create and append <canvas> for layer')
+      // element.appendChild(generateCanvas(layer))
+      // console.timeEnd('Create and append <canvas> for layer')
+    } else if (type === 'MainImageData') {
+      const image = value
+      element.appendChild(generateCanvas(image))
     }
   }
 
@@ -80,13 +52,20 @@ export default function Home() {
     const context = canvasEl.getContext('2d') as CanvasRenderingContext2D
 
     const { width, height, pixelData: rgba } = data
-    const imageData = context.createImageData(width, height)
+    const imageData = new ImageData(rgba, width, height)
 
     canvasEl.width = width
     canvasEl.height = height
 
-    imageData.data.set(rgba)
     context.putImageData(imageData, 0, 0)
+
+    // const imageData = context.createImageData(width, height)
+
+    // canvasEl.width = width
+    // canvasEl.height = height
+
+    // imageData.data.set(rgba)
+    // context.putImageData(imageData, 0, 0)
 
     return canvasEl
   }
@@ -121,14 +100,16 @@ export default function Home() {
       onDrop: async (acceptedFiles: File[]) => {
         if (workerRef.current) {
           readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
-            console.log(buffer)
-
             workerRef.current?.postMessage(createMessage('ParseData', buffer), [
               buffer,
             ])
           })
-          const resultsEl = document.querySelector('#results') as HTMLDivElement
-          resultsEl.innerHTML = ''
+
+          const targetEl = document.querySelector('#target') as HTMLDivElement
+          const sourceEl = document.querySelector('#source') as HTMLDivElement
+
+          targetEl.innerHTML = ''
+          sourceEl.innerHTML = ''
         }
 
         // console.log(acceptedFiles)
@@ -152,25 +133,36 @@ export default function Home() {
       },
     })
 
-  const style = useMemo(
-    () => ({
-      ...baseStyle,
-      ...(isFocused ? focusedStyle : {}),
-      ...(isDragAccept ? acceptStyle : {}),
-      ...(isDragReject ? rejectStyle : {}),
-    }),
-    [isFocused, isDragAccept, isDragReject],
-  )
-
   useEffect(() => {
     workerRef.current = new Worker(new URL('./worker.ts', import.meta.url))
 
-    const resultsEl = document.querySelector('#results') as HTMLDivElement
+    const targetEl = document.querySelector('#target') as HTMLDivElement
+    const sourceEl = document.querySelector('#source') as HTMLDivElement
 
     workerRef.current.addEventListener('message', (e: MessageEvent<any>) => {
-      workerCallback(e, resultsEl)
+      workerCallback(e, targetEl)
+      workerCallback(e, sourceEl)
     })
   }, [])
+
+  useEffect(() => {
+    const source = document.getElementById('source')
+    const target = document.getElementById('target')
+
+    if (source && target) {
+      const syncScroll = (e: any) => {
+        if (isSynced) {
+          target.scrollTop = source.scrollTop
+        }
+      }
+
+      source.addEventListener('scroll', syncScroll)
+
+      return () => {
+        source.removeEventListener('scroll', syncScroll)
+      }
+    }
+  }, [isSynced])
 
   return (
     // <main className={styles.main}>
@@ -213,7 +205,18 @@ export default function Home() {
             width: '300px',
             alignItems: 'center',
           }}
-        ></Box>
+        >
+          <Box
+            // sx={{ ...style }}
+            {...getRootProps({ className: 'dropzone' })}
+            id='upload'
+          >
+            <input {...getInputProps()} />
+            {/* <p>Drag 'n' drop some files here, or click to select files</p> */}
+            <Button>File upload</Button>
+            {/* <input type='file' accept='.psd,.psb' id='selectFile' /> */}
+          </Box>
+        </Box>
         <Box
           sx={{
             display: 'flex',
@@ -221,6 +224,18 @@ export default function Home() {
             alignItems: 'center',
           }}
         >
+          <FormControlLabel
+            control={
+              <Switch
+                checked={isSynced}
+                onChange={() => setIsSynced(!isSynced)}
+                // onChange={setValue.handleAddTextCheckChange}
+                // disabled={!values.selectedImageFile}
+              />
+            }
+            label='Sync scroll'
+            sx={{ minWidth: '180px', paddingTop: 1 }}
+          />
           <FormControlLabel
             control={
               <Switch
@@ -241,40 +256,45 @@ export default function Home() {
         </Box>
       </Box>
       <Box sx={{ display: 'flex', width: '100%' }}>
-        {/* <Box
+        <Box
+          id='source'
           sx={{
             display: 'flex',
+            flexDirection: 'column',
             flex: 1,
-            height: '100vh',
+            // height: '100vh',
             margin: '0 auto',
             overflow: 'auto',
 
             border: '1px solid',
             '::-webkit-scrollbar': { display: 'none' },
           }}
-        ></Box> */}
-        <Box></Box>
-        <Box sx={{ ...style }} {...getRootProps({ className: 'dropzone' })}>
-          <input {...getInputProps()} />
-          <p>Drag 'n' drop some files here, or click to select files</p>
-          {/* <input type='file' accept='.psd,.psb' id='selectFile' /> */}
-        </Box>
+        ></Box>
+
+        {/* <section>
+          <div className='section-content'> */}
         <Box
-          id='results'
+          id='target'
           sx={{
             display: 'flex',
+            flexDirection: 'column',
             flex: 1,
             // minWidth: '900px',
             // width: '900px',
+            margin: '0 auto',
             cursor: 'copy',
             position: 'relative',
-            height: '100%',
+            overflow: 'auto',
+            border: '1px solid',
+            // height: '100%',
 
             '::-webkit-scrollbar': {
               display: 'none',
             },
           }}
         ></Box>
+        {/* </div>
+        </section> */}
       </Box>
     </Box>
   )

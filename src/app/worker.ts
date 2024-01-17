@@ -19,6 +19,17 @@ self.addEventListener('message', async ({ data }) => {
 
     console.log(psd)
 
+    const pixelData = await psd.composite()
+    self.postMessage(
+      createMessage('MainImageData', {
+        pixelData,
+
+        width: psd.width,
+        height: psd.height,
+        layerCount: psd.layers.length,
+      }),
+    )
+
     for (const [index, layer] of psd.layers.entries()) {
       console.time(`Compositing layer ${index}`)
       const pixelData = await layer.composite(true, true)
