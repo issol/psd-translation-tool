@@ -14,51 +14,62 @@ export interface BalloonType {
   left: number
   top: number
   text: string
+  width: number
+  height: number
+  type: string
 }
 
 const WorkSpace = () => {
   const workerRef = useRef<Worker>()
   const [isSynced, setIsSynced] = useState(false)
+  const [addText, setAddText] = useState(false)
+  const [image, setImage] = useState<any | null>(null)
+  const [delta, setDelta] = useState<XYCoord | null>(null)
+  const boundaryRef = useRef<HTMLDivElement>(null)
 
   const [balloons, setBalloons] = useState<BalloonType[]>([])
 
-  const handleMove = (id: string, left: number, top: number) => {
-    // const targetBox = document.getElementById('target')
-    // if (!targetBox) return
-
-    // const targetBoxRect = targetBox.getBoundingClientRect()
-
-    // console.log(targetBoxRect)
-
-    // const relativeLeft = left - targetBoxRect.left
-    // const relativeTop = top - targetBoxRect.top
-
+  const handleAction = (
+    action: 'move' | 'resize',
+    id: string,
+    left: number,
+    top: number,
+    width?: number,
+    height?: number,
+  ) => {
     setBalloons(prevBalloons =>
       prevBalloons.map(balloon =>
         balloon.id === id
-          ? { ...balloon, left: left < 0 ? 0 : left, top: top < 0 ? 0 : top }
+          ? {
+              ...balloon,
+              left: action === 'move' ? left : balloon.left,
+              top: action === 'move' ? top : balloon.top,
+              width:
+                action === 'resize' && width && width >= 150
+                  ? width
+                  : balloon.width,
+              height:
+                action === 'resize' && height && height >= 100
+                  ? height
+                  : balloon.height,
+            }
           : balloon,
       ),
     )
   }
 
   const handleClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (!addText) return
     const rect = (e.target as HTMLElement).getBoundingClientRect()
-    console.log(rect)
-
-    console.log(e)
-
-    const width = rect.width
-    const x = width - e.clientX
-    console.log(x)
-
-    const y = e.clientY - rect.top
 
     const newBalloon = {
       id: Math.random().toString(),
       left: e.clientX - rect.left,
       top: e.clientY - rect.top,
       text: '',
+      width: 150,
+      height: 100,
+      type: 'BALLOON',
     }
     setBalloons(prevBalloons => [...prevBalloons, newBalloon])
   }
@@ -80,16 +91,34 @@ const WorkSpace = () => {
 
   const [, drop] = useDrop(
     () => ({
-      accept: 'BALLOON',
+      accept: ['BALLOON', 'RESIZE'],
+
       drop(item: BalloonType, monitor) {
         const delta = monitor.getDifferenceFromInitialOffset() as XYCoord
         const left = Math.round(item.left + delta.x)
         const top = Math.round(item.top + delta.y)
-        handleMove(item.id, left, top)
+        setDelta(delta)
+        console.log(item)
+        console.log(delta)
+
+        console.log(left, top)
+
+        if (item.type === 'RESIZE') {
+          handleAction(
+            'resize',
+            item.id,
+            left,
+            top,
+            item.width + delta.x,
+            item.height + delta.y,
+          )
+        } else {
+          handleAction('move', item.id, left, top)
+        }
         return undefined
       },
     }),
-    [handleMove],
+    [handleAction],
   )
 
   const workerCallback = (
@@ -120,6 +149,7 @@ const WorkSpace = () => {
       // console.timeEnd('Create and append <canvas> for layer')
     } else if (type === 'MainImageData') {
       const image = value
+      setImage(image)
       element.appendChild(generateCanvas(image))
     }
   }
@@ -184,25 +214,6 @@ const WorkSpace = () => {
           targetEl.innerHTML = ''
           sourceEl.innerHTML = ''
         }
-
-        // console.log(acceptedFiles)
-        // const result = await acceptedFiles[0].arrayBuffer()
-        // const psdFile = Psd.parse(result)
-        // const canvasElement = document.createElement('canvas')
-        // const context = canvasElement.getContext('2d')
-        // const compositeBuffer = await psdFile.composite()
-        // const imageData = new ImageData(
-        //   compositeBuffer,
-        //   psdFile.width,
-        //   psdFile.height,
-        // )
-        // canvasElement.width = psdFile.width
-        // canvasElement.height = psdFile.height
-        // const blob = new Blob([imageData.data.buffer], { type: 'image/png' })
-        // const url = URL.createObjectURL(blob)
-        // setImageSrc(url)
-        // context?.putImageData(imageData, 0, 0)
-        // document.body.append(canvasElement)
       },
     })
 
@@ -245,6 +256,21 @@ const WorkSpace = () => {
   useEffect(() => {
     console.log(balloons)
   }, [balloons])
+
+  useEffect(() => {
+    const boundary = boundaryRef.current?.getBoundingClientRect()
+
+    // if (boundary) {
+    //   const DEFAULT_W = 240
+    //   const DEFAULT_H = 120
+    //   setBalloons({
+    //     left: Math.floor(boundary.width / 2 - DEFAULT_W / 2),
+    //     top: Math.floor(boundary.height / 2 - DEFAULT_H / 2),
+    //     w: DEFAULT_W,
+    //     h: DEFAULT_H,
+    //   })
+    // }
+  }, [])
 
   return (
     // <main className={styles.main}>
@@ -319,9 +345,12 @@ const WorkSpace = () => {
           <FormControlLabel
             control={
               <Switch
-              // checked={values.addTextCheck}
-              // onChange={setValue.handleAddTextCheckChange}
-              // disabled={!values.selectedImageFile}
+                checked={addText}
+                onChange={() => setAddText(!addText)}
+                disabled={image === null}
+                // checked={values.addTextCheck}
+                // onChange={setValue.handleAddTextCheckChange}
+                // disabled={!values.selectedImageFile}
               />
             }
             label='Add Text Box'
@@ -366,7 +395,7 @@ const WorkSpace = () => {
             // minWidth: '900px',
             // width: '900px',
             margin: '0 auto',
-            cursor: 'copy',
+            cursor: addText ? 'copy' : 'default',
             position: 'relative',
             overflow: 'auto',
             border: '1px solid',
@@ -382,9 +411,9 @@ const WorkSpace = () => {
             <Balloon
               key={balloon.id}
               {...balloon}
-              onMove={handleMove}
               onDelete={handleDelete}
               handleTextChange={handleTextChange}
+              delta={delta}
             />
           ))}
         </Box>
