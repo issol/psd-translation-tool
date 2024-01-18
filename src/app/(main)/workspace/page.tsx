@@ -24,7 +24,8 @@ const WorkSpace = () => {
   const [isSynced, setIsSynced] = useState(false)
   const [addText, setAddText] = useState(false)
   const [image, setImage] = useState<any | null>(null)
-  const [delta, setDelta] = useState<XYCoord | null>(null)
+  const [resizing, setResizing] = useState(false)
+
   const boundaryRef = useRef<HTMLDivElement>(null)
 
   const [balloons, setBalloons] = useState<BalloonType[]>([])
@@ -58,9 +59,18 @@ const WorkSpace = () => {
     )
   }
 
+  useEffect(() => {
+    console.log(resizing)
+  }, [resizing])
+
   const handleClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (!addText) return
+    // if (!addText) return
+    if (resizing) return
+
     const rect = (e.target as HTMLElement).getBoundingClientRect()
+
+    console.log(rect)
+    console.log(e)
 
     const newBalloon = {
       id: Math.random().toString(),
@@ -97,7 +107,7 @@ const WorkSpace = () => {
         const delta = monitor.getDifferenceFromInitialOffset() as XYCoord
         const left = Math.round(item.left + delta.x)
         const top = Math.round(item.top + delta.y)
-        setDelta(delta)
+
         console.log(item)
         console.log(delta)
 
@@ -128,15 +138,15 @@ const WorkSpace = () => {
     const { type, timestamp, value } = data
     validateMessage(data)
 
-    console.log(
-      `It took %d ms to send this message (worker → main, type: %o)`,
-      Date.now() - timestamp,
-      type,
-    )
+    // console.log(
+    //   `It took %d ms to send this message (worker → main, type: %o)`,
+    //   Date.now() - timestamp,
+    //   type,
+    // )
 
     if (type === 'Layer') {
       const layer = value
-      console.log(layer)
+      // console.log(layer)
 
       // -- Layers --
       // element.insertAdjacentHTML('beforeend', `<h3>${layer.name}</h3>`)
@@ -253,25 +263,6 @@ const WorkSpace = () => {
     }
   }, [isSynced])
 
-  useEffect(() => {
-    console.log(balloons)
-  }, [balloons])
-
-  useEffect(() => {
-    const boundary = boundaryRef.current?.getBoundingClientRect()
-
-    // if (boundary) {
-    //   const DEFAULT_W = 240
-    //   const DEFAULT_H = 120
-    //   setBalloons({
-    //     left: Math.floor(boundary.width / 2 - DEFAULT_W / 2),
-    //     top: Math.floor(boundary.height / 2 - DEFAULT_H / 2),
-    //     w: DEFAULT_W,
-    //     h: DEFAULT_H,
-    //   })
-    // }
-  }, [])
-
   return (
     // <main className={styles.main}>
     <Box
@@ -385,7 +376,8 @@ const WorkSpace = () => {
           <div className='section-content'> */}
         <Box
           id='target'
-          ref={drop}
+          // ref={drop}
+          ref={boundaryRef}
           onClick={handleClick}
           sx={{
             display: 'flex',
@@ -413,7 +405,9 @@ const WorkSpace = () => {
               {...balloon}
               onDelete={handleDelete}
               handleTextChange={handleTextChange}
-              delta={delta}
+              setBalloons={setBalloons}
+              boundaryRef={boundaryRef}
+              setResizing={setResizing}
             />
           ))}
         </Box>
