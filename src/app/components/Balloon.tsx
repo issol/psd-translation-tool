@@ -1,19 +1,11 @@
-import {
-  useState,
-  MouseEvent,
-  useRef,
-  useEffect,
-  Dispatch,
-  SetStateAction,
-  RefObject,
-} from 'react'
-import { XYCoord, useDrag, useDrop } from 'react-dnd'
+import { MouseEvent, useRef, Dispatch, SetStateAction, RefObject } from 'react'
+
 import { BalloonType } from '../(main)/workspace/page'
-import { getEmptyImage } from 'react-dnd-html5-backend'
-import { Box, TextareaAutosize } from '@mui/material'
-import registerMouseDownDrag from './registerMouseDown'
+
+import { Box, IconButton, TextareaAutosize } from '@mui/material'
+
 import registerMouseDown from './registerMouseDown'
-import registerMouseDownDown from './registerMouseDown'
+import ClearIcon from '@mui/icons-material/Clear'
 
 interface BalloonProps {
   id: string
@@ -46,33 +38,6 @@ const Balloon = ({
   const MIN_HEIGHT = 100
   const boxRef = useRef<HTMLDivElement>(null)
 
-  // const [{ isDragging }, drag] = useDrag(
-  //   () => ({
-  //     type: 'BALLOON',
-  //     item: { id, left, top, type: 'BALLOON' },
-  //     collect: monitor => ({
-  //       isDragging: monitor.isDragging(),
-  //     }),
-  //   }),
-  //   [id, left, top],
-  // )
-
-  // const [collected, dragResize, preview] = useDrag(
-  //   () => ({
-  //     type: 'RESIZE',
-  //     item: { id, type: 'RESIZE', left, top, width, height },
-
-  //     collect: monitor => ({
-  //       isDragging: monitor.isDragging(),
-  //     }),
-  //   }),
-  //   [id, left, top, width, height],
-  // )
-
-  // useEffect(() => {
-  //   preview(getEmptyImage(), { captureDraggingState: true })
-  // }, [])
-
   const inrange = (v: number, min: number, max: number) => {
     if (v < min) return min
     if (v > max) return max
@@ -83,11 +48,13 @@ const Balloon = ({
     <div
       style={{
         transform: `translateX(${left}px) translateY(${top}px)`,
-        border: '1px solid red',
+
         height: height,
         width: width,
         // position: 'absolute',
         position: 'absolute',
+        borderRadius: '10px',
+        backgroundColor: '#f8f9fa',
       }}
       onMouseDown={e => {
         e.stopPropagation()
@@ -147,17 +114,57 @@ const Balloon = ({
           width: '100%',
           cursor: 'move',
           borderColor: 'gray.100',
+          border: '1px solid',
           backgroundColor: 'white',
+          padding: '25px 10px 10px 10px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           position: 'absolute',
-          borderRadius: 'xl',
-          borderWidth: '1px',
+
           transition: 'shadow 0.3s ease-in-out, transform 0.3s ease-in-out',
           '&:active': {
             transform: 'scale(0.95)',
             boxShadow: 'lg',
           },
         }}
-      />
+      >
+        <TextareaAutosize
+          value={text}
+          onClick={e => e.stopPropagation()}
+          onChange={e => {
+            e.stopPropagation()
+            handleTextChange(id, e.target.value)
+          }}
+          style={{
+            padding: '5px',
+            borderRadius: '5px',
+            border: '1px solid #ced4da',
+            width: '100%',
+            height: '100%',
+            resize: 'none',
+          }}
+        />
+        <IconButton
+          onClick={(event: MouseEvent<HTMLButtonElement>) =>
+            onDelete(id, event)
+          }
+          sx={{
+            position: 'absolute',
+            right: '5px',
+            top: '5px',
+
+            border: 'none',
+            borderRadius: '50%',
+            width: '20px',
+            height: '20px',
+            textAlign: 'center',
+            lineHeight: '20px',
+            cursor: 'pointer',
+          }}
+        >
+          <ClearIcon />
+        </IconButton>
+      </Box>
       {/* 좌상단 */}
       <div
         style={{
@@ -350,9 +357,9 @@ const Balloon = ({
         style={{
           position: 'absolute',
           top: `-${height / 190}rem`, // Adjust this value as needed
-          left: `35%`,
+          left: `40%`,
           height: `${height / 100}rem`, // Adjust this value as needed
-          width: `${width / 50}rem`, // Adjust this value as needed
+          width: `${width / 80}rem`, // Adjust this value as needed
           cursor: 'n-resize',
         }}
         onClick={e => e.stopPropagation()}
@@ -508,94 +515,6 @@ const Balloon = ({
         )}
       />
     </div>
-    // </div>
-    // <div
-    //   // ref={drag}
-    //   {...registerMouseDownDrag((deltaX, deltaY) => {
-    //     setBalloons(prevBalloons =>
-    //       prevBalloons.map(balloon =>
-    //         balloon.id === id
-    //           ? {
-    //               ...balloon,
-    //               left: balloon.left + deltaX,
-    //               top: balloon.top + deltaY,
-    //             }
-    //           : balloon,
-    //       ),
-    //     )
-    //   })}
-    //   onClick={e => e.stopPropagation()}
-    //   style={{
-    //     // opacity: isDragging ? 0.5 : 1,
-    //     position: 'absolute',
-    //     // left,
-    //     // top,
-    //     width: `${width}px`,
-    //     height: `${height}px`,
-    //     left: left,
-    //     top: top,
-    //     padding: '25px 10px 10px 10px',
-    //     backgroundColor: '#f8f9fa',
-    //     border: '1px solid #ced4da',
-    //     borderRadius: '10px',
-    //     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-    //     cursor: 'move',
-    //     minWidth: '150px',
-    //     minHeight: '100px',
-
-    //     // width: `${width}px`,
-    //     // height: `${height}px`,
-    //     transition: 'width 0.2s, height 0.2s',
-    //   }}
-    // >
-    //   <TextareaAutosize
-    //     value={text}
-    //     onClick={e => e.stopPropagation()}
-    //     onChange={e => {
-    //       e.stopPropagation()
-    //       handleTextChange(id, e.target.value)
-    //     }}
-    //     style={{
-    //       padding: '5px',
-    //       borderRadius: '5px',
-    //       border: '1px solid #ced4da',
-    //       width: '100%',
-    //       height: '100%',
-    //       resize: 'none',
-    //     }}
-    //   />
-    //   <button
-    //     onClick={(event: MouseEvent<HTMLButtonElement>) => onDelete(id, event)}
-    //     style={{
-    //       position: 'absolute',
-    //       right: '5px',
-    //       top: '5px',
-    //       backgroundColor: '#f8f9fa',
-    //       border: 'none',
-    //       borderRadius: '50%',
-    //       width: '20px',
-    //       height: '20px',
-    //       textAlign: 'center',
-    //       lineHeight: '20px',
-    //       cursor: 'pointer',
-    //     }}
-    //   >
-    //     X
-    //   </button>
-
-    //   {/* <div
-    //       ref={dragResize}
-    //       style={{
-    //         position: 'absolute',
-    //         right: 0,
-    //         bottom: 0,
-    //         width: '20px',
-    //         height: '20px',
-    //         // backgroundColor: 'red',
-    //         cursor: 'nwse-resize',
-    //       }}
-    //     /> */}
-    // </div>
   )
 }
 

@@ -1,12 +1,11 @@
 'use client'
-import Image from 'next/image'
-import styles from './page.module.css'
+
 import { Box, Button, FormControlLabel, Switch } from '@mui/material'
 import { useDropzone } from 'react-dropzone'
-import { useEffect, useMemo, useRef, useState, MouseEvent } from 'react'
+import { useEffect, useRef, useState, MouseEvent } from 'react'
 import Psd from '@webtoon/psd'
 import { createMessage, validateMessage } from '@/app/messaging'
-import { XYCoord, useDrop } from 'react-dnd'
+
 import Balloon from '@/app/components/Balloon'
 
 export interface BalloonType {
@@ -30,41 +29,8 @@ const WorkSpace = () => {
 
   const [balloons, setBalloons] = useState<BalloonType[]>([])
 
-  const handleAction = (
-    action: 'move' | 'resize',
-    id: string,
-    left: number,
-    top: number,
-    width?: number,
-    height?: number,
-  ) => {
-    setBalloons(prevBalloons =>
-      prevBalloons.map(balloon =>
-        balloon.id === id
-          ? {
-              ...balloon,
-              left: action === 'move' ? left : balloon.left,
-              top: action === 'move' ? top : balloon.top,
-              width:
-                action === 'resize' && width && width >= 150
-                  ? width
-                  : balloon.width,
-              height:
-                action === 'resize' && height && height >= 100
-                  ? height
-                  : balloon.height,
-            }
-          : balloon,
-      ),
-    )
-  }
-
-  useEffect(() => {
-    console.log(resizing)
-  }, [resizing])
-
   const handleClick = (e: MouseEvent<HTMLDivElement>) => {
-    // if (!addText) return
+    if (!addText) return
     if (resizing) return
 
     const rect = (e.target as HTMLElement).getBoundingClientRect()
@@ -98,38 +64,6 @@ const WorkSpace = () => {
       ),
     )
   }
-
-  const [, drop] = useDrop(
-    () => ({
-      accept: ['BALLOON', 'RESIZE'],
-
-      drop(item: BalloonType, monitor) {
-        const delta = monitor.getDifferenceFromInitialOffset() as XYCoord
-        const left = Math.round(item.left + delta.x)
-        const top = Math.round(item.top + delta.y)
-
-        console.log(item)
-        console.log(delta)
-
-        console.log(left, top)
-
-        if (item.type === 'RESIZE') {
-          handleAction(
-            'resize',
-            item.id,
-            left,
-            top,
-            item.width + delta.x,
-            item.height + delta.y,
-          )
-        } else {
-          handleAction('move', item.id, left, top)
-        }
-        return undefined
-      },
-    }),
-    [handleAction],
-  )
 
   const workerCallback = (
     { data }: MessageEvent<any>,
@@ -202,30 +136,29 @@ const WorkSpace = () => {
     }
   }
 
-  const { getRootProps, getInputProps, isFocused, isDragAccept, isDragReject } =
-    useDropzone({
-      multiple: false,
-      accept: {
-        // 'image/*': ['.png', '.jpg', '.jpeg'],
-        'image/vnd.adobe.photoshop': ['.psd', '.psb'],
-        // 'application/pdf': ['.pdf'],
-      },
-      onDrop: async (acceptedFiles: File[]) => {
-        if (workerRef.current) {
-          readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
-            workerRef.current?.postMessage(createMessage('ParseData', buffer), [
-              buffer,
-            ])
-          })
+  const { getRootProps, getInputProps } = useDropzone({
+    multiple: false,
+    accept: {
+      // 'image/*': ['.png', '.jpg', '.jpeg'],
+      'image/vnd.adobe.photoshop': ['.psd', '.psb'],
+      // 'application/pdf': ['.pdf'],
+    },
+    onDrop: async (acceptedFiles: File[]) => {
+      if (workerRef.current) {
+        readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
+          workerRef.current?.postMessage(createMessage('ParseData', buffer), [
+            buffer,
+          ])
+        })
 
-          const targetEl = document.querySelector('#target') as HTMLDivElement
-          const sourceEl = document.querySelector('#source') as HTMLDivElement
+        const targetEl = document.querySelector('#target') as HTMLDivElement
+        const sourceEl = document.querySelector('#source') as HTMLDivElement
 
-          targetEl.innerHTML = ''
-          sourceEl.innerHTML = ''
-        }
-      },
-    })
+        targetEl.innerHTML = ''
+        sourceEl.innerHTML = ''
+      }
+    },
+  })
 
   useEffect(() => {
     workerRef.current = new Worker(
@@ -339,9 +272,6 @@ const WorkSpace = () => {
                 checked={addText}
                 onChange={() => setAddText(!addText)}
                 disabled={image === null}
-                // checked={values.addTextCheck}
-                // onChange={setValue.handleAddTextCheckChange}
-                // disabled={!values.selectedImageFile}
               />
             }
             label='Add Text Box'
@@ -384,15 +314,12 @@ const WorkSpace = () => {
             flexDirection: 'column',
             flex: 1,
             maxWidth: '50vw',
-            // minWidth: '900px',
-            // width: '900px',
+
             margin: '0 auto',
             cursor: addText ? 'copy' : 'default',
             position: 'relative',
             overflow: 'auto',
             border: '1px solid',
-            // backgroundColor: isOver ? 'yellow' : 'white',
-            // height: '100%',
 
             '::-webkit-scrollbar': {
               display: 'none',
