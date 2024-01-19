@@ -24,6 +24,7 @@ const WorkSpace = () => {
   const [addText, setAddText] = useState(false)
   const [image, setImage] = useState<any | null>(null)
   const [resizing, setResizing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const boundaryRef = useRef<HTMLDivElement>(null)
 
@@ -34,9 +35,6 @@ const WorkSpace = () => {
     if (resizing) return
 
     const rect = (e.target as HTMLElement).getBoundingClientRect()
-
-    console.log(rect)
-    console.log(e)
 
     const newBalloon = {
       id: Math.random().toString(),
@@ -78,9 +76,44 @@ const WorkSpace = () => {
     //   type,
     // )
 
+    setIsLoading(false)
+
     if (type === 'Layer') {
       const layer = value
-      // console.log(layer)
+
+      const targetBox = boundaryRef.current?.getBoundingClientRect()
+      if (!targetBox) {
+        throw new Error('Target box not found')
+      }
+
+      const targetBoxWidth = targetBox.width
+      const scale = targetBoxWidth / layer.originalWidth
+
+      setBalloons(prevState => {
+        const duplicate = prevState.find(
+          value =>
+            value.text === layer.name &&
+            value.left === layer.left * scale &&
+            value.top === layer.top * scale,
+        )
+        if (duplicate) return prevState
+        return [
+          ...prevState,
+
+          {
+            left: layer.left * scale,
+            top: layer.top * scale,
+            width: layer.width * scale,
+            height:
+              layer.height * (scale / 1.1) > 500
+                ? 500
+                : layer.height * (scale / 1.1),
+            text: layer.name,
+            id: Math.random().toString(),
+            type: 'BALLOON',
+          },
+        ]
+      })
 
       // -- Layers --
       // element.insertAdjacentHTML('beforeend', `<h3>${layer.name}</h3>`)
@@ -93,8 +126,13 @@ const WorkSpace = () => {
       // console.timeEnd('Create and append <canvas> for layer')
     } else if (type === 'MainImageData') {
       const image = value
+      console.log(image)
+
       setImage(image)
       element.appendChild(generateCanvas(image))
+    } else if (type === 'Group') {
+      const image = value
+      console.log(image)
     }
   }
 
@@ -107,8 +145,13 @@ const WorkSpace = () => {
     const context = canvasEl.getContext('2d') as CanvasRenderingContext2D
 
     const { width, height, pixelData: rgba } = data
+    // const scale = targetBox.width / width
+    // const newWidth = Math.round(width * scale)
+    // const newHeight = Math.round(height * scale)
     const imageData = new ImageData(rgba, width, height)
 
+    // canvasEl.width = newWidth
+    // canvasEl.height = newHeight
     canvasEl.width = width
     canvasEl.height = height
 
@@ -146,6 +189,7 @@ const WorkSpace = () => {
     onDrop: async (acceptedFiles: File[]) => {
       if (workerRef.current) {
         readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
+          setIsLoading(true)
           workerRef.current?.postMessage(createMessage('ParseData', buffer), [
             buffer,
           ])
@@ -153,9 +197,11 @@ const WorkSpace = () => {
 
         const targetEl = document.querySelector('#target') as HTMLDivElement
         const sourceEl = document.querySelector('#source') as HTMLDivElement
-
-        targetEl.innerHTML = ''
-        sourceEl.innerHTML = ''
+        setBalloons([])
+        if (targetEl.firstChild && sourceEl.firstChild) {
+          targetEl.removeChild(targetEl.firstChild as Node)
+          sourceEl.removeChild(sourceEl.firstChild as Node)
+        }
       }
     },
   })
@@ -196,152 +242,203 @@ const WorkSpace = () => {
     }
   }, [isSynced])
 
+  // useEffect(() => {
+  //   const updateTargetWidth = () => {
+  //     const boundary = boundaryRef.current?.getBoundingClientRect()
+  //     if (boundary) {
+  //       // Only update the original target width if it hasn't been set yet
+  //       if (originalTargetWidth === 0) {
+  //         setOriginalTargetWidth(boundary.width)
+  //       }
+  //       setTargetWidth(boundary.width)
+  //     }
+  //   }
+
+  //   updateTargetWidth()
+  //   window.addEventListener('resize', updateTargetWidth)
+
+  //   return () => {
+  //     window.removeEventListener('resize', updateTargetWidth)
+  //   }
+  // }, [originalTargetWidth])
+
+  // // Update balloon positions when the target box width changes
+  // useEffect(() => {
+  //   if (originalTargetWidth !== 0 && image) {
+  //     console.log(originalTargetWidth, targetWidth, image.width)
+  //     const imageRatio = image.width / originalTargetWidth
+  //     setBalloons(prevBalloons =>
+  //       prevBalloons.map(balloon => {
+  //         let newLeft = balloon.left * (targetWidth / originalTargetWidth)
+  //         // Ensure newLeft is within the range [12, targetWidth - 12]
+  //         newLeft = Math.max(12, newLeft)
+  //         newLeft = Math.min(newLeft, targetWidth - 12)
+  //         return {
+  //           ...balloon,
+  //           left: newLeft,
+  //         }
+  //       }),
+  //     )
+  //   }
+  // }, [targetWidth, originalTargetWidth, image])
+
   return (
     // <main className={styles.main}>
-    <Box
-      sx={{
-        display: 'flex',
-        position: 'relative',
-        gap: 4,
-        paddingTop: '75px',
-        width: '100%',
-      }}
-    >
+    <>
       <Box
         sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-
           display: 'flex',
-          backgroundColor: '#f5f5f5',
+          position: 'relative',
+          gap: 4,
+          paddingTop: '75px',
           width: '100%',
-
-          zIndex: 101,
-          paddingRight: '28px',
-
-          height: '70px',
-          justifyContent: 'space-between',
-          alignItems: 'center',
         }}
       >
         <Box
           sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+
             display: 'flex',
-            color: 'green',
-            gap: '4px',
-            minWidth: '300px',
-            justifyContent: 'flex-end',
-            marginLeft: '15px',
-            paddingTop: '1px',
-            width: '300px',
+            backgroundColor: '#f5f5f5',
+            width: '100%',
+
+            zIndex: 101,
+            paddingRight: '28px',
+
+            height: '70px',
+            justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
           <Box
-            // sx={{ ...style }}
-            {...getRootProps({ className: 'dropzone' })}
-            id='upload'
+            sx={{
+              display: 'flex',
+              color: 'green',
+              gap: '4px',
+              minWidth: '300px',
+              justifyContent: 'flex-end',
+              marginLeft: '15px',
+              paddingTop: '1px',
+              width: '300px',
+              alignItems: 'center',
+            }}
           >
-            <input {...getInputProps()} />
-            {/* <p>Drag 'n' drop some files here, or click to select files</p> */}
-            <Button>File upload</Button>
-            {/* <input type='file' accept='.psd,.psb' id='selectFile' /> */}
+            <Box
+              // sx={{ ...style }}
+              {...getRootProps({ className: 'dropzone' })}
+              id='upload'
+            >
+              <input {...getInputProps()} />
+              {/* <p>Drag 'n' drop some files here, or click to select files</p> */}
+              <Button>File upload</Button>
+              {/* <input type='file' accept='.psd,.psb' id='selectFile' /> */}
+            </Box>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isSynced}
+                  onChange={() => setIsSynced(!isSynced)}
+                  disabled={image === null}
+                />
+              }
+              label='Sync scroll'
+              sx={{ minWidth: '180px', paddingTop: 1 }}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={addText}
+                  onChange={() => setAddText(!addText)}
+                  disabled={image === null}
+                />
+              }
+              label='Add Text Box'
+              sx={{ minWidth: '180px', paddingTop: 1 }}
+            />
+            <Button
+            // onClick={clickEvent.onClickSaveButton}
+            // disabled={!values.selectedImageFile}
+            >
+              SAVE
+            </Button>
           </Box>
         </Box>
-        <Box
-          sx={{
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center',
-          }}
-        >
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isSynced}
-                onChange={() => setIsSynced(!isSynced)}
-              />
-            }
-            label='Sync scroll'
-            sx={{ minWidth: '180px', paddingTop: 1 }}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={addText}
-                onChange={() => setAddText(!addText)}
-                disabled={image === null}
-              />
-            }
-            label='Add Text Box'
-            sx={{ minWidth: '180px', paddingTop: 1 }}
-          />
-          <Button
-          // onClick={clickEvent.onClickSaveButton}
-          // disabled={!values.selectedImageFile}
-          >
-            SAVE
-          </Button>
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', width: '100%' }}>
-        <Box
-          id='source'
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            // height: '100vh',
-            maxWidth: '50vw',
-            margin: '0 auto',
-            overflow: 'auto',
+        <Box sx={{ display: 'flex', width: '100%' }}>
+          <Box
+            id='source'
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              // height: '100vh',
+              maxWidth: '50vw',
+              margin: '0 auto',
+              overflow: 'auto',
 
-            border: '1px solid',
-            '::-webkit-scrollbar': { display: 'none' },
-          }}
-        ></Box>
+              border: '1px solid',
+              '::-webkit-scrollbar': { display: 'none' },
+            }}
+          ></Box>
 
-        {/* <section>
+          {/* <section>
           <div className='section-content'> */}
-        <Box
-          id='target'
-          // ref={drop}
-          ref={boundaryRef}
-          onClick={handleClick}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            maxWidth: '50vw',
+          <Box
+            id='target'
+            // ref={drop}
+            ref={boundaryRef}
+            onClick={handleClick}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              maxWidth: '50vw',
+              // height: image ? image.height : '100%',
+              margin: '0 auto',
+              cursor: addText ? 'copy' : 'default',
+              position: 'relative',
+              overflow: 'auto',
+              // overflow: 'auto',
+              border: '1px solid',
 
-            margin: '0 auto',
-            cursor: addText ? 'copy' : 'default',
-            position: 'relative',
-            overflow: 'auto',
-            border: '1px solid',
-
-            '::-webkit-scrollbar': {
-              display: 'none',
-            },
-          }}
-        >
-          {balloons.map(balloon => (
-            <Balloon
-              key={balloon.id}
-              {...balloon}
-              onDelete={handleDelete}
-              handleTextChange={handleTextChange}
-              setBalloons={setBalloons}
-              boundaryRef={boundaryRef}
-              setResizing={setResizing}
-            />
-          ))}
-        </Box>
-        {/* </div>
+              '::-webkit-scrollbar': {
+                display: 'none',
+              },
+            }}
+          >
+            {isLoading ? (
+              <div>Loading...</div>
+            ) : (
+              <>
+                {balloons.map(balloon => (
+                  <Balloon
+                    key={balloon.id}
+                    {...balloon}
+                    onDelete={handleDelete}
+                    handleTextChange={handleTextChange}
+                    setBalloons={setBalloons}
+                    boundaryRef={boundaryRef}
+                    setResizing={setResizing}
+                    image={image}
+                  />
+                ))}
+              </>
+            )}
+          </Box>
+          {/* </div>
         </section> */}
+        </Box>
       </Box>
-    </Box>
+    </>
   )
 }
 

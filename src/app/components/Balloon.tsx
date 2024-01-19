@@ -4,7 +4,7 @@ import { BalloonType } from '../(main)/workspace/page'
 
 import { Box, IconButton, TextareaAutosize } from '@mui/material'
 
-import registerMouseDown from './registerMouseDown'
+import registerMouseDown from '../utils/registerMouseDown'
 import ClearIcon from '@mui/icons-material/Clear'
 
 interface BalloonProps {
@@ -19,6 +19,7 @@ interface BalloonProps {
   handleTextChange: (id: string, text: string) => void
   boundaryRef: RefObject<HTMLDivElement>
   setResizing: Dispatch<SetStateAction<boolean>>
+  image: any
 }
 const Balloon = ({
   id,
@@ -32,6 +33,7 @@ const Balloon = ({
   handleTextChange,
   boundaryRef,
   setResizing,
+  image,
 }: BalloonProps) => {
   const BOUNDARY_MARGIN = 12
   const MIN_WIDTH = 150
@@ -66,6 +68,8 @@ const Balloon = ({
         const mouseMoveHandler = (e: any) => {
           if (boundaryRef.current && boxRef.current) {
             const boundary = boundaryRef.current.getBoundingClientRect()
+            const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
+
             const box = boxRef.current.getBoundingClientRect()
 
             const deltaX = e.pageX - initX
@@ -84,7 +88,7 @@ const Balloon = ({
                       top: inrange(
                         top + deltaY,
                         BOUNDARY_MARGIN,
-                        boundary.height - box.height - BOUNDARY_MARGIN,
+                        boundaryRefScrollHeight - box.height - BOUNDARY_MARGIN,
                       ),
                     }
                   : balloon,
@@ -279,6 +283,7 @@ const Balloon = ({
             if (!boundaryRef.current) return
             setResizing(true)
             const boundary = boundaryRef.current.getBoundingClientRect()
+            const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
                 balloon.id === id
@@ -298,7 +303,7 @@ const Balloon = ({
                       height: inrange(
                         height + deltaY,
                         MIN_HEIGHT,
-                        boundary.height - top - BOUNDARY_MARGIN,
+                        boundaryRefScrollHeight - top - BOUNDARY_MARGIN,
                       ),
                     }
                   : balloon,
@@ -326,6 +331,7 @@ const Balloon = ({
             if (!boundaryRef.current) return
             setResizing(true)
             const boundary = boundaryRef.current.getBoundingClientRect()
+            const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
                 balloon.id === id
@@ -341,7 +347,7 @@ const Balloon = ({
                       height: inrange(
                         height + deltaY,
                         MIN_HEIGHT,
-                        boundary.height - top - BOUNDARY_MARGIN,
+                        boundaryRefScrollHeight - top - BOUNDARY_MARGIN,
                       ),
                     }
                   : balloon,
@@ -410,7 +416,7 @@ const Balloon = ({
             if (!boundaryRef.current) return
             setResizing(true)
             const boundary = boundaryRef.current.getBoundingClientRect()
-
+            const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
                 balloon.id === id
@@ -422,7 +428,7 @@ const Balloon = ({
                       height: inrange(
                         height + deltaY,
                         MIN_HEIGHT,
-                        boundary.height - top - BOUNDARY_MARGIN,
+                        boundaryRefScrollHeight - top - BOUNDARY_MARGIN,
                       ),
                     }
                   : balloon,

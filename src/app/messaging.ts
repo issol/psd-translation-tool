@@ -50,15 +50,20 @@ export type LayerMessage = ExampleMessageBase<
     top: number
     width: number
     height: number
+    type: string
     /** Parsed layer name */
     name: string
+    originalWidth: number
   }
 >
+
+export type GroupMessage = ExampleMessageBase<'Group', any[]>
 
 export type ExampleMessage =
   | LayerMessage
   | MainImageDataMessage
   | ParsePsdMessage
+  | GroupMessage
 
 /**
  * Checks if a value is an {@link ExampleMessage}.
@@ -85,6 +90,7 @@ export function validateMessage(data: unknown): asserts data is ExampleMessage {
     case 'Layer':
     case 'MainImageData':
     case 'ParseData':
+    case 'Group':
       // These are valid, so pass
       return
     default:
