@@ -15,6 +15,7 @@
     "@mui/icons-material": "^5.15.5",
     "@mui/material": "^5.15.5",
     "@webtoon/psd": "^0.4.0",
+    "ag-psd": "^19.0.1",
     "next": "14.0.4",
     "react": "^18",
     "react-dom": "^18",

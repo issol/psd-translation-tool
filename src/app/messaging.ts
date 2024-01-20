@@ -2,8 +2,22 @@
 // Copyright 2021-present NAVER WEBTOON
 // MIT License
 
+import Psd, { Group } from '@webtoon/psd'
+import { BalloonType } from './(main)/workspace/page'
+import { Dispatch, SetStateAction } from 'react'
+
 // This file provides interfaces and validators for message objects passed
 // between the main window and the worker.
+
+export type BoxType = {
+  pixelData: Uint8ClampedArray
+  left: number
+  top: number
+  width: number
+  height: number
+  /** Parsed layer name */
+  name: string
+}
 
 /** Unique signature */
 const SIGNATURE = 'this-is-a-message'
@@ -34,6 +48,7 @@ export type MainImageDataMessage = ExampleMessageBase<
     width: number
     height: number
     layerCount: number
+    psd: Psd
   }
 >
 
@@ -54,16 +69,31 @@ export type LayerMessage = ExampleMessageBase<
     /** Parsed layer name */
     name: string
     originalWidth: number
+    group: Group
+    index: number
+    lastIndex: number
   }
 >
 
-export type GroupMessage = ExampleMessageBase<'Group', any[]>
+export type GroupMessage = ExampleMessageBase<
+  'Group',
+  {
+    box: Array<BoxType>
+    group: Group | null
+    originalWidth: number
+  }
+>
+export type WriteFileMessage = ExampleMessageBase<
+  'WriteFile',
+  { originalFile: Psd; box: BalloonType[]; group: Group | null }
+>
 
 export type ExampleMessage =
   | LayerMessage
   | MainImageDataMessage
   | ParsePsdMessage
   | GroupMessage
+  | WriteFileMessage
 
 /**
  * Checks if a value is an {@link ExampleMessage}.
@@ -91,6 +121,7 @@ export function validateMessage(data: unknown): asserts data is ExampleMessage {
     case 'MainImageData':
     case 'ParseData':
     case 'Group':
+    case 'WriteFile':
       // These are valid, so pass
       return
     default:

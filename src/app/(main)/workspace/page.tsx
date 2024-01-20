@@ -1,12 +1,19 @@
 'use client'
 
-import { Box, Button, FormControlLabel, Switch } from '@mui/material'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  FormControlLabel,
+  Switch,
+} from '@mui/material'
 import { useDropzone } from 'react-dropzone'
 import { useEffect, useRef, useState, MouseEvent } from 'react'
-import Psd from '@webtoon/psd'
-import { createMessage, validateMessage } from '@/app/messaging'
+import Psd, { Group } from '@webtoon/psd'
+import { BoxType, createMessage, validateMessage } from '@/app/messaging'
 
 import Balloon from '@/app/components/Balloon'
+import Image from 'next/image'
 
 export interface BalloonType {
   id: string
@@ -15,16 +22,17 @@ export interface BalloonType {
   text: string
   width: number
   height: number
-  type: string
 }
 
 const WorkSpace = () => {
   const workerRef = useRef<Worker>()
+  const lastCalledRef = useRef<number>(0)
   const [isSynced, setIsSynced] = useState(false)
   const [addText, setAddText] = useState(false)
   const [image, setImage] = useState<any | null>(null)
   const [resizing, setResizing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [scriptGroup, setScriptGroup] = useState<Group | null>(null)
 
   const boundaryRef = useRef<HTMLDivElement>(null)
 
@@ -63,9 +71,21 @@ const WorkSpace = () => {
     )
   }
 
+  const onClickExport = () => {
+    if (workerRef.current) {
+      workerRef.current.postMessage(
+        createMessage('WriteFile', {
+          originalFile: image,
+          box: balloons,
+          group: scriptGroup,
+        }),
+      )
+    }
+  }
+
   const workerCallback = (
     { data }: MessageEvent<any>,
-    element: HTMLDivElement,
+    element: HTMLDivElement[],
   ) => {
     const { type, timestamp, value } = data
     validateMessage(data)
@@ -76,44 +96,8 @@ const WorkSpace = () => {
     //   type,
     // )
 
-    setIsLoading(false)
-
     if (type === 'Layer') {
       const layer = value
-
-      const targetBox = boundaryRef.current?.getBoundingClientRect()
-      if (!targetBox) {
-        throw new Error('Target box not found')
-      }
-
-      const targetBoxWidth = targetBox.width
-      const scale = targetBoxWidth / layer.originalWidth
-
-      setBalloons(prevState => {
-        const duplicate = prevState.find(
-          value =>
-            value.text === layer.name &&
-            value.left === layer.left * scale &&
-            value.top === layer.top * scale,
-        )
-        if (duplicate) return prevState
-        return [
-          ...prevState,
-
-          {
-            left: layer.left * scale,
-            top: layer.top * scale,
-            width: layer.width * scale,
-            height:
-              layer.height * (scale / 1.1) > 500
-                ? 500
-                : layer.height * (scale / 1.1),
-            text: layer.name,
-            id: Math.random().toString(),
-            type: 'BALLOON',
-          },
-        ]
-      })
 
       // -- Layers --
       // element.insertAdjacentHTML('beforeend', `<h3>${layer.name}</h3>`)
@@ -126,13 +110,45 @@ const WorkSpace = () => {
       // console.timeEnd('Create and append <canvas> for layer')
     } else if (type === 'MainImageData') {
       const image = value
-      console.log(image)
 
       setImage(image)
-      element.appendChild(generateCanvas(image))
+      element.map(value => {
+        value.appendChild(generateCanvas(image))
+      })
     } else if (type === 'Group') {
-      const image = value
-      console.log(image)
+      const layer = value
+      const targetBox = boundaryRef.current?.getBoundingClientRect()
+      if (!targetBox) {
+        throw new Error('Target box not found')
+      }
+
+      const targetBoxWidth = targetBox.width
+      const scale = targetBoxWidth / layer.originalWidth
+
+      setScriptGroup(layer.group)
+      console.log(layer)
+
+      layer.box.map((value: BoxType) => {
+        setBalloons(prevState => {
+          return [
+            ...prevState,
+            {
+              id: Math.random().toString(),
+              text: value.name,
+              left: value.left * scale,
+              top: value.top * scale,
+              width: 200,
+              height: 150,
+              // width: value.width * scale,
+              // height:
+              //   value.height * (scale / 1.1) > 500
+              //     ? 500
+              //     : value.height * (scale / 1.1),
+            },
+          ]
+        })
+      })
+      setIsLoading(false)
     }
   }
 
@@ -215,8 +231,8 @@ const WorkSpace = () => {
     const sourceEl = document.querySelector('#source') as HTMLDivElement
 
     workerRef.current.addEventListener('message', (e: MessageEvent<any>) => {
-      workerCallback(e, targetEl)
-      workerCallback(e, sourceEl)
+      workerCallback(e, [targetEl, sourceEl])
+      // workerCallback(e, sourceEl)
     })
   }, [])
 
@@ -282,9 +298,46 @@ const WorkSpace = () => {
   //   }
   // }, [targetWidth, originalTargetWidth, image])
 
+  console.log(isLoading)
+
   return (
     // <main className={styles.main}>
     <>
+      {isLoading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            zIndex: 9999,
+            left: 0,
+            top: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          {/* <Box
+            sx={{
+              border: '16px solid #f3f3f3',
+              borderTop: '16px solid #3498db',
+              borderRadius: '50%',
+              width: '120px',
+              height: '120px',
+              animation: 'spin 2s linear infinite',
+            }}
+          ></Box> */}
+          {/* <Image
+            src='/pulse-loading.svg' // 이미지의 경로를 지정합니다.
+            alt='Loading'
+            width={120} // 이미지의 너비를 지정합니다.
+            height={120} // 이미지의 높이를 지정합니다.
+          /> */}
+          <CircularProgress disableShrink sx={{ mt: 6 }} />
+        </Box>
+      )}
+
       <Box
         sx={{
           display: 'flex',
@@ -366,10 +419,11 @@ const WorkSpace = () => {
               sx={{ minWidth: '180px', paddingTop: 1 }}
             />
             <Button
-            // onClick={clickEvent.onClickSaveButton}
-            // disabled={!values.selectedImageFile}
+              onClick={onClickExport}
+              // onClick={clickEvent.onClickSaveButton}
+              // disabled={!values.selectedImageFile}
             >
-              SAVE
+              Export
             </Button>
           </Box>
         </Box>
@@ -415,24 +469,18 @@ const WorkSpace = () => {
               },
             }}
           >
-            {isLoading ? (
-              <div>Loading...</div>
-            ) : (
-              <>
-                {balloons.map(balloon => (
-                  <Balloon
-                    key={balloon.id}
-                    {...balloon}
-                    onDelete={handleDelete}
-                    handleTextChange={handleTextChange}
-                    setBalloons={setBalloons}
-                    boundaryRef={boundaryRef}
-                    setResizing={setResizing}
-                    image={image}
-                  />
-                ))}
-              </>
-            )}
+            {balloons.map(balloon => (
+              <Balloon
+                key={balloon.id}
+                {...balloon}
+                onDelete={handleDelete}
+                handleTextChange={handleTextChange}
+                setBalloons={setBalloons}
+                boundaryRef={boundaryRef}
+                setResizing={setResizing}
+                image={image}
+              />
+            ))}
           </Box>
           {/* </div>
         </section> */}

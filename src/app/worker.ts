@@ -1,5 +1,6 @@
-import Psd, { Layer } from '@webtoon/psd'
+import Psd, { Group, Layer } from '@webtoon/psd'
 import { createMessage, validateMessage } from './messaging'
+import { writePsd } from 'ag-psd'
 
 self.addEventListener('message', async ({ data }) => {
   const { type, timestamp, value } = data
@@ -27,6 +28,7 @@ self.addEventListener('message', async ({ data }) => {
         width: psd.width,
         height: psd.height,
         layerCount: psd.layers.length,
+        psd: psd,
       }),
     )
 
@@ -48,31 +50,50 @@ self.addEventListener('message', async ({ data }) => {
     //   )
     // }
 
+    let result: Array<{
+      pixelData: Uint8ClampedArray
+      left: number
+      top: number
+      width: number
+      height: number
+      /** Parsed layer name */
+      name: string
+    }> = []
+
+    let originalGroup: Group | null = null
+
     for (const [index, child] of psd.children.entries()) {
       if (child.type === 'Group' && child.name === '대사') {
         // console.log(child.children.filter((layer) => layer.type === 'Group'))
         console.log(child)
+        originalGroup = child
 
         for (const [index, layer] of child.children.entries()) {
           const value = layer as Layer
 
-          self.postMessage(
-            createMessage('Layer', {
-              pixelData,
-              name: layer.name,
-              left: value.left,
-              top: value.top,
-              width: value.width,
-              height: value.height,
-              type: layer.type,
-              originalWidth: psd.width,
-            }),
-          )
+          result.push({
+            pixelData,
+            name: layer.name,
+            left: value.left,
+            top: value.top,
+            width: value.width,
+            height: value.height,
+          })
         }
       }
 
       // const pixelData = await child.composite(true, true)
     }
+    self.postMessage(
+      createMessage('Group', {
+        box: result,
+        group: originalGroup,
+        originalWidth: psd.width,
+      }),
+    )
+  } else if (type === 'WriteFile') {
+    const arrayBuffer = writePsd(value.originalFile)
+    console.log(arrayBuffer)
   } else {
     console.error(`Worker received a message that it cannot handle: %o`, data)
   }
