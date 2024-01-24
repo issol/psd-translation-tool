@@ -16,10 +16,12 @@
     "@mui/material": "^5.15.5",
     "@webtoon/psd": "^0.4.0",
     "ag-psd": "^19.0.1",
+    "html2canvas": "^1.4.1",
     "next": "14.0.4",
     "react": "^18",
     "react-dom": "^18",
-    "react-dropzone": "^14.2.3"
+    "react-dropzone": "^14.2.3",
+    "recoil": "^0.7.7"
   },
   "devDependencies": {
     "@types/node": "^20",

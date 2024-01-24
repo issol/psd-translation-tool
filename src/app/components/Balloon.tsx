@@ -1,6 +1,6 @@
 import { MouseEvent, useRef, Dispatch, SetStateAction, RefObject } from 'react'
 
-import { BalloonType } from '../(main)/workspace/page'
+import { BalloonType } from '../workspace/page'
 
 import { Box, IconButton, TextareaAutosize } from '@mui/material'
 
@@ -8,7 +8,7 @@ import registerMouseDown from '../utils/registerMouseDown'
 import ClearIcon from '@mui/icons-material/Clear'
 
 interface BalloonProps {
-  id: string
+  idx: string
   left: number
   top: number
   width: number
@@ -19,10 +19,9 @@ interface BalloonProps {
   handleTextChange: (id: string, text: string) => void
   boundaryRef: RefObject<HTMLDivElement>
   setResizing: Dispatch<SetStateAction<boolean>>
-  image: any
 }
 const Balloon = ({
-  id,
+  idx,
   left,
   top,
   width,
@@ -33,7 +32,6 @@ const Balloon = ({
   handleTextChange,
   boundaryRef,
   setResizing,
-  image,
 }: BalloonProps) => {
   const BOUNDARY_MARGIN = 12
   const MIN_WIDTH = 150
@@ -48,6 +46,7 @@ const Balloon = ({
 
   return (
     <div
+      id={`balloon-${idx}`}
       style={{
         transform: `translateX(${left}px) translateY(${top}px)`,
 
@@ -77,7 +76,7 @@ const Balloon = ({
 
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left: inrange(
@@ -137,7 +136,7 @@ const Balloon = ({
           onClick={e => e.stopPropagation()}
           onChange={e => {
             e.stopPropagation()
-            handleTextChange(id, e.target.value)
+            handleTextChange(idx, e.target.value)
           }}
           style={{
             padding: '5px',
@@ -150,7 +149,7 @@ const Balloon = ({
         />
         <IconButton
           onClick={(event: MouseEvent<HTMLButtonElement>) =>
-            onDelete(id, event)
+            onDelete(idx, event)
           }
           sx={{
             position: 'absolute',
@@ -186,7 +185,7 @@ const Balloon = ({
             setResizing(true)
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left: inrange(
@@ -238,7 +237,7 @@ const Balloon = ({
             const boundary = boundaryRef.current.getBoundingClientRect()
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left,
@@ -286,7 +285,7 @@ const Balloon = ({
             const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left: inrange(
@@ -334,7 +333,7 @@ const Balloon = ({
             const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left,
@@ -375,7 +374,7 @@ const Balloon = ({
             setResizing(true)
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left,
@@ -419,7 +418,7 @@ const Balloon = ({
             const boundaryRefScrollHeight = boundaryRef.current.scrollHeight
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left,
@@ -459,7 +458,7 @@ const Balloon = ({
 
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left,
@@ -496,7 +495,7 @@ const Balloon = ({
             setResizing(true)
             setBalloons(prevBalloons =>
               prevBalloons.map(balloon =>
-                balloon.id === id
+                balloon.idx === idx
                   ? {
                       ...balloon,
                       left: inrange(

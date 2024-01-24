@@ -2,19 +2,17 @@
 // Copyright 2021-present NAVER WEBTOON
 // MIT License
 
-import Psd, { Group } from '@webtoon/psd'
-import { BalloonType } from './(main)/workspace/page'
+import Psd, { Group, NodeChild } from '@webtoon/psd'
+import { BalloonType } from './workspace/page'
 import { Dispatch, SetStateAction } from 'react'
+import { Psd as AgPsd, Layer as AgLayer } from 'ag-psd'
 
 // This file provides interfaces and validators for message objects passed
 // between the main window and the worker.
 
 export type BoxType = {
-  pixelData: Uint8ClampedArray
   left: number
   top: number
-  width: number
-  height: number
   /** Parsed layer name */
   name: string
 }
@@ -48,7 +46,7 @@ export type MainImageDataMessage = ExampleMessageBase<
     width: number
     height: number
     layerCount: number
-    psd: Psd
+    psd: AgPsd
   }
 >
 
@@ -68,25 +66,40 @@ export type LayerMessage = ExampleMessageBase<
     type: string
     /** Parsed layer name */
     name: string
-    originalWidth: number
-    group: Group
-    index: number
-    lastIndex: number
+    // originalWidth: number
+    // group: Group
+    // index: number
+    // lastIndex: number
   }
 >
+
+export type ChildrenMessage = ExampleMessageBase<'Children', AgLayer>
 
 export type GroupMessage = ExampleMessageBase<
   'Group',
   {
     box: Array<BoxType>
-    group: Group | null
+    group?: AgLayer
     originalWidth: number
   }
 >
 export type WriteFileMessage = ExampleMessageBase<
   'WriteFile',
-  { originalFile: Psd; box: BalloonType[]; group: Group | null }
+  {
+    originalFile: {
+      pixelData: Uint8ClampedArray
+      width: number
+      height: number
+      layerCount: number
+      psd: AgPsd
+    } | null
+    box: BalloonType[]
+    group: AgLayer[] | null
+    image: ImageBitmap
+  }
 >
+
+export type DownloadFileMessage = ExampleMessageBase<'DownloadFile', Blob>
 
 export type ExampleMessage =
   | LayerMessage
@@ -94,6 +107,8 @@ export type ExampleMessage =
   | ParsePsdMessage
   | GroupMessage
   | WriteFileMessage
+  | DownloadFileMessage
+  | ChildrenMessage
 
 /**
  * Checks if a value is an {@link ExampleMessage}.
@@ -122,6 +137,8 @@ export function validateMessage(data: unknown): asserts data is ExampleMessage {
     case 'ParseData':
     case 'Group':
     case 'WriteFile':
+    case 'DownloadFile':
+    case 'Children':
       // These are valid, so pass
       return
     default:

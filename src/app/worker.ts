@@ -1,6 +1,35 @@
-import Psd, { Group, Layer } from '@webtoon/psd'
+import Psd from '@webtoon/psd'
 import { createMessage, validateMessage } from './messaging'
-import { writePsd } from 'ag-psd'
+
+import {
+  Psd as AgPsd,
+  Layer as AgLayer,
+  readPsd,
+  byteArrayToBase64,
+} from 'ag-psd'
+
+import { initializeCanvas } from 'ag-psd/dist/helpers'
+
+declare const self: DedicatedWorkerGlobalScope
+
+const createCanvas = (width: number, height: number) => {
+  const canvas = new OffscreenCanvas(width, height)
+  canvas.width = width
+  canvas.height = height
+  return canvas
+}
+
+const createCanvasFromData = (data: Uint8Array) => {
+  const image = new Image()
+  image.src = 'data:image/jpeg;base64,' + byteArrayToBase64(data)
+  const canvas = new OffscreenCanvas(image.width, image.height)
+  canvas.width = image.width
+  canvas.height = image.height
+  canvas.getContext('2d')?.drawImage(image, 0, 0)
+  return canvas
+}
+
+initializeCanvas(createCanvas, createCanvasFromData)
 
 self.addEventListener('message', async ({ data }) => {
   const { type, timestamp, value } = data
@@ -15,27 +44,44 @@ self.addEventListener('message', async ({ data }) => {
 
   if (type === 'ParseData') {
     console.time('Parse PSD file')
-    const psd = Psd.parse(value)
+    const psd: any = Psd.parse(value)
+    const agPsd = readPsd(value, {
+      // skipLayerImageData: true,
+      useImageData: true,
+      skipThumbnail: true,
+    })
+
+    console.log(agPsd)
+    const { canvas, children, ...agPsdWithoutCanvas } = agPsd
+
+    // const bmp = (canvas as OffscreenCanvas)?.transferToImageBitmap()
+
     console.timeEnd('Parse PSD file')
 
     console.log(psd)
 
     const pixelData = await psd.composite()
+
     self.postMessage(
       createMessage('MainImageData', {
         pixelData,
 
         width: psd.width,
         height: psd.height,
+        psd: agPsdWithoutCanvas,
         layerCount: psd.layers.length,
-        psd: psd,
       }),
     )
 
+    for (const [index, child] of children?.entries() ?? []) {
+      self.postMessage(createMessage('Children', child))
+    }
+
     // for (const [index, layer] of psd.layers.entries()) {
-    //   console.time(`Compositing layer ${index}`)
+    //   // console.time(`Compositing layer ${index}`)
     //   const pixelData = await layer.composite(true, true)
-    //   console.timeEnd(`Compositing layer ${index}`)
+    //   // console.timeEnd(`Compositing layer ${index}`)
+
     //   self.postMessage(
     //     createMessage('Layer', {
     //       pixelData,
@@ -50,50 +96,104 @@ self.addEventListener('message', async ({ data }) => {
     //   )
     // }
 
-    let result: Array<{
-      pixelData: Uint8ClampedArray
-      left: number
-      top: number
-      width: number
-      height: number
-      /** Parsed layer name */
-      name: string
-    }> = []
+    let originalGroup: AgLayer | undefined = children?.find(
+      value => value.name == '대사',
+    )
 
-    let originalGroup: Group | null = null
+    let box =
+      originalGroup?.children?.map(value => ({
+        top: value.top!,
+        left: value.left!,
+        name: value.name ?? '',
+      })) ?? []
 
-    for (const [index, child] of psd.children.entries()) {
-      if (child.type === 'Group' && child.name === '대사') {
-        // console.log(child.children.filter((layer) => layer.type === 'Group'))
-        console.log(child)
-        originalGroup = child
-
-        for (const [index, layer] of child.children.entries()) {
-          const value = layer as Layer
-
-          result.push({
-            pixelData,
-            name: layer.name,
-            left: value.left,
-            top: value.top,
-            width: value.width,
-            height: value.height,
-          })
-        }
-      }
-
-      // const pixelData = await child.composite(true, true)
-    }
     self.postMessage(
       createMessage('Group', {
-        box: result,
+        box: box,
         group: originalGroup,
         originalWidth: psd.width,
       }),
     )
   } else if (type === 'WriteFile') {
-    const arrayBuffer = writePsd(value.originalFile)
-    console.log(arrayBuffer)
+    const { originalFile, group, image } = value as {
+      originalFile: {
+        pixelData: Uint8ClampedArray
+        width: number
+        height: number
+        layerCount: number
+        psd: AgPsd
+      } | null
+      group: AgLayer[]
+      image: ImageBitmap
+    }
+
+    // if (originalFile) {
+    //   let copyOriginalFile = { ...originalFile.psd }
+    //   let copyOriginalGroup = originalFile.psd.children?.find(
+    //     value => value.name == '대사',
+    //   )
+    //   console.log(copyOriginalFile)
+
+    //   console.log(copyOriginalGroup)
+    //   let resultFile
+    //   let resultGroup
+
+    //   if (copyOriginalGroup) {
+    //     let copyOriginalGroupChildren = copyOriginalFile.children ?? []
+
+    //     resultGroup = {
+    //       ...copyOriginalGroup,
+    //       children: group,
+    //       name: '대사 카피',
+    //     }
+    //     console.log(resultGroup)
+
+    //     copyOriginalGroupChildren.push(resultGroup)
+    //     resultFile = {
+    //       ...copyOriginalFile,
+    //       children: copyOriginalGroupChildren,
+    //     }
+    //   }
+
+    //   console.log(resultFile)
+    //   console.log(image)
+
+    //   const canvas = new OffscreenCanvas(image.width, image.height)
+    //   canvas.getContext('bitmaprenderer')?.transferFromImageBitmap(image)
+    //   const canvas2 = new OffscreenCanvas(canvas.width, canvas.height)
+    //   canvas2.getContext('2d')?.drawImage(canvas, 0, 0)
+
+    //   const result: AgPsd = {
+    //     ...resultFile,
+    //     width: canvas2.width, // Assign a valid number value to the width property
+    //     height: canvas2.height, // Assign a valid number value to the height property
+    //     canvas: canvas2,
+    //     // imageData: originalFile.psd.imageData,
+    //     // canvas: canvas2,
+    //   }
+
+    //   // copyOriginalFile = {
+    //   //   ...copyOriginalFile,
+    //   //   canvas: canvas2,
+    //   // }
+
+    //   const arrayBuffer = writePsd(result)
+    //   console.log(arrayBuffer)
+
+    //   // need to draw onto new canvas because single canvas can't use both '2d' and 'bitmaprenderer' contexts
+
+    //   // const arrayBuffer = writePsd(copyOriginalPsd)
+    //   // console.log(arrayBuffer)
+
+    //   // console.log(arrayBuffer)
+    //   // const psd: any = Psd.parse(arrayBuffer)
+    //   // console.log(psd)
+
+    //   const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' })
+    //   console.log(blob)
+
+    //   self.postMessage(createMessage('DownloadFile', blob))
+    // }
   } else {
     console.error(`Worker received a message that it cannot handle: %o`, data)
   }
