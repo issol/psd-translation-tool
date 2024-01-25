@@ -5,8 +5,11 @@ import {
   Button,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   LinearProgress,
   Switch,
+  Tooltip,
+  Typography,
 } from '@mui/material'
 import { useDropzone } from 'react-dropzone'
 import { useEffect, useRef, useState, MouseEvent, Fragment } from 'react'
@@ -19,6 +22,12 @@ import Balloon from '@/app/components/Balloon'
 import useModal from '@/app/hooks/useModal'
 import Modal from '@/app/components/modal/custom-modal'
 import { atom, useRecoilState } from 'recoil'
+import ClearIcon from '@mui/icons-material/Clear'
+import ErrorModal from '../components/modal/error-modal'
+import { hexToRGBA } from '../utils/hexToRGBA'
+import styled from '@emotion/styled'
+import NextImage from 'next/image'
+import { Icon } from '@iconify/react'
 
 export interface BalloonType {
   idx: string
@@ -53,29 +62,28 @@ const DefaultGroup: AgLayer = {
   transparencyShapesLayer: true,
 }
 
-const fileReadingState = atom({
-  key: `fileReadingState-${Math.random()}`,
-  default: false,
-})
-
-const textBoxReadingState = atom({
-  key: `textBoxReadingState-${Math.random()}`,
-  default: false,
-})
-
-const writeFileState = atom({
-  key: `writeFileState-${Math.random()}`,
-  default: false,
-})
-
-const progressState = atom({
-  key: `progressState-${Math.random()}`,
-  default: 0,
+const loadingStatusState = atom<string | null>({
+  key: `loadingStatusState-${Math.random()}`,
+  default: null,
 })
 
 const WorkSpace = () => {
   const workerRef = useRef<Worker>()
+  const timerWorkerRef = useRef<Worker>()
+  const inputRef = useRef<any>(null)
+  const panel = useRef<any>(null)
+  const headerRef = useRef<any>(null)
   const { openModal, closeModal } = useModal()
+
+  const [open, setOpen] = useState(false)
+  const focusOut = (e: any) => {
+    if (panel.current === null) return
+    if (!panel.current.contains(e.target)) setOpen(false)
+  }
+  useEffect(() => {
+    window.addEventListener('click', focusOut)
+    return () => window.removeEventListener('click', focusOut)
+  }, [])
 
   const [isSynced, setIsSynced] = useState(false)
   const [addText, setAddText] = useState(false)
@@ -92,16 +100,9 @@ const WorkSpace = () => {
     null,
   )
 
-  const [fileReading, setFileReading] = useRecoilState(fileReadingState)
-  const [textBoxReading, setTextBoxReading] =
-    useRecoilState(textBoxReadingState)
-  const [writeFile, setWriteFile] = useRecoilState(writeFileState)
+  const [loadingStatus, setLoadingStatus] = useRecoilState(loadingStatusState)
 
-  const [buffer, setBuffer] = useState<ArrayBuffer | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  const [conversionTime, setConversionTime] = useState<number | null>(null)
-  const [progress, setProgress] = useRecoilState(progressState)
-  const [group, setGroup] = useState<AgLayer[]>([])
 
   const canvasPool: HTMLCanvasElement[] = []
 
@@ -218,8 +219,31 @@ const WorkSpace = () => {
     }
   }
 
+  const convertImageToCanvas = (
+    file: File,
+  ): Promise<HTMLCanvasElement | null> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = event => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, img.width, img.height)
+          }
+          resolve(canvas)
+        }
+        img.src = event.target?.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
   const createCanvasWithText = (item: BalloonType, scale: number) => {
-    setTextBoxReading(true)
     const canvas = document.createElement('canvas')
     canvas.width = item.width * scale + 15
     canvas.height = item.height * scale
@@ -314,256 +338,65 @@ const WorkSpace = () => {
     return newNode
   }
 
-  const handleCopyLayerStyle = async () => {
-    if (file && image) {
-      let agPsd = image.psd
-      if (group.length > 0) {
-        const promises = group.map(addCanvasToChildren)
+  const handleCopyLayerStyle = async (
+    filename: string,
+    fileExtension: string,
+  ) => {
+    if (file) {
+      readFileAsArrayBuffer(file).then(buffer => {
+        if (
+          workerRef.current &&
+          image &&
+          boundaryRef.current &&
+          timerWorkerRef.current
+        ) {
+          const targetBox = boundaryRef.current?.getBoundingClientRect()
+          console.log(file.name.includes('.psb'))
 
-        agPsd.children = await Promise.all(promises)
-        setFileReading(false)
-      }
-      console.log(agPsd)
-
-      if (boundaryRef.current) {
-        const targetBox = boundaryRef.current?.getBoundingClientRect()
-        if (targetBox && image) {
-          setTextBoxReading(true)
           const targetBoxWidth = targetBox.width
-          const scale = image.width / targetBoxWidth
 
-          let newGroup = [...(scriptGroup?.children || [])]
-
-          let originalPsd = { ...agPsd }
-          let copyOriginalGroup =
-            originalPsd.children?.find(value => value.name == '대사') ??
-            DefaultGroup
-
-          if (balloons.length > 0) {
-            const promises = balloons.map(async (item, index) => {
-              return createCanvasWithText(item, scale)
-            })
-
-            newGroup = await Promise.all(promises)
-            setTextBoxReading(false)
-          }
-
-          let resultGroup = {
-            ...copyOriginalGroup,
-            children: newGroup,
-            name: '대사 카피',
-          }
-          if (originalPsd.children) {
-            originalPsd.children.push(resultGroup)
-          } else {
-            originalPsd.children = [resultGroup]
-          }
-          setWriteFile(true)
-
-          const arrayBuffer = writePsd(originalPsd)
-
-          const blob = new Blob([arrayBuffer], {
-            type: 'application/octet-stream',
-          })
-
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(blob)
-          a.textContent = 'Download generated PSD'
-          a.download = 'example_psd.psd'
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-
-          setWriteFile(false)
+          timerWorkerRef.current.postMessage(
+            createMessage('ProgressAction', 'start'),
+          )
+          workerRef.current.postMessage(
+            createMessage('WriteFile', {
+              originalFile: image,
+              box: balloons,
+              // group: group,
+              targetBoxWidth: targetBoxWidth,
+              scriptGroup: scriptGroup,
+              buffer: buffer,
+              isPsb: file.name.includes('.psb'),
+              fileName: `${filename}.${fileExtension}`,
+            }),
+          )
         }
-      }
-    } else {
-      setFileReading(false)
+      })
     }
   }
 
-  // // const handleCopyLayerStyle = async () => {
-  // //   setExportLoading(true)
-  // //   if (file) {
-  // //     setFileReading(true)
-  // //     const buffer = await readFileAsArrayBuffer(file)
-  // //     const agPsd = readPsd(buffer, {
-  // //       skipThumbnail: true,
-  // //     })
-  // //     setFileReading(false)
-
-  // //     if (boundaryRef.current) {
-  // //       setTextBoxReading(true)
-  // //       const targetBox = boundaryRef.current?.getBoundingClientRect()
-  // //       if (targetBox && image) {
-  // //         const targetBoxWidth = targetBox.width
-  // //         const scale = image.width / targetBoxWidth
-
-  // //         let newGroup = [...(scriptGroup?.children || [])] // group과 똑같은 배열을 복사합니다.
-
-  // //         let originalPsd = { ...agPsd }
-  // //         let copyOriginalGroup =
-  // //           originalPsd.children?.find(value => value.name == '대사') ??
-  // //           DefaultGroup
-
-  // //         if (balloons.length > 0 && newGroup.length > 0) {
-  // //           const promises = newGroup.map(async (item, index) => {
-  // //             const canvas = document.createElement('canvas')
-  // //             canvas.width = balloons[index].width * scale // Set the width of the canvas
-  // //             canvas.height = balloons[index].height * scale // Set the height of the canvas
-
-  // //             const ctx = canvas.getContext('2d')
-
-  // //             if (ctx) {
-  // //               ctx.fillStyle = 'white' // Set the fill color to white
-  // //               ctx.fillRect(0, 0, canvas.width, canvas.height) // Fill the canvas with the fill color
-
-  // //               ctx.strokeStyle = 'black' // Set the border color to black
-  // //               ctx.lineWidth = 5 // Set the border width
-  // //               ctx.strokeRect(0, 0, canvas.width, canvas.height)
-
-  // //               ctx.font = '30px Arial' // Set the font size and family
-  // //               ctx.fillStyle = 'black'
-  // //               const text = balloons[index].text
-  // //               const words = text.split(' ')
-  // //               const lineHeight = 30
-  // //               let line = ''
-  // //               let y = 50
-
-  // //               for (let n = 0; n < words.length; n++) {
-  // //                 const testLine = line + words[n] + ' '
-  // //                 const metrics = ctx.measureText(testLine)
-  // //                 const testWidth = metrics.width
-
-  // //                 if (testWidth > canvas.width && n > 0) {
-  // //                   ctx.fillText(line, 10, y)
-  // //                   line = words[n] + ' '
-  // //                   y += lineHeight
-  // //                 } else {
-  // //                   line = testLine
-  // //                 }
-  // //               }
-
-  // //               ctx.fillText(line, 20, y)
-  // //             }
-
-  // //             return {
-  // //               ...item,
-  // //               name: balloons[index].text, // name을 바꿉니다.
-  // //               top: balloons[index].top * scale, // top을 바꿉니다.
-  // //               left: balloons[index].left * scale, // left를 바꿉니다.
-
-  // //               canvas: canvas,
-  // //               // canvas: matchingChild ? matchingChild.canvas : undefined, // Add the canvas from the matching child
-  // //             }
-  // //           })
-
-  // //           newGroup = await Promise.all(promises)
-  // //         } else if (balloons.length > 0 && newGroup.length === 0) {
-  // //           const promises = balloons.map(async (item, index) => {
-  // //             const canvas = document.createElement('canvas')
-  // //             canvas.width = item.width * scale // Set the width of the canvas
-  // //             canvas.height = item.height * scale // Set the height of the canvas
-
-  // //             const ctx = canvas.getContext('2d')
-
-  // //             if (ctx) {
-  // //               ctx.fillStyle = 'white' // Set the fill color to white
-  // //               ctx.fillRect(0, 0, canvas.width, canvas.height) // Fill the canvas with the fill color
-
-  // //               ctx.strokeStyle = 'black' // Set the border color to black
-  // //               ctx.lineWidth = 5 // Set the border width
-  // //               ctx.strokeRect(0, 0, canvas.width, canvas.height)
-
-  // //               ctx.font = '30px Arial' // Set the font size and family
-  // //               ctx.fillStyle = 'black'
-  // //               const text = item.text
-  // //               const words = text.split(' ')
-  // //               const lineHeight = 30
-  // //               let line = ''
-  // //               let y = 50
-
-  // //               for (let n = 0; n < words.length; n++) {
-  // //                 const testLine = line + words[n] + ' '
-  // //                 const metrics = ctx.measureText(testLine)
-  // //                 const testWidth = metrics.width
-
-  // //                 if (testWidth > canvas.width && n > 0) {
-  // //                   ctx.fillText(line, 10, y)
-  // //                   line = words[n] + ' '
-  // //                   y += lineHeight
-  // //                 } else {
-  // //                   line = testLine
-  // //                 }
-  // //               }
-
-  // //               ctx.fillText(line, 20, y)
-  // //             }
-
-  // //             return {
-  // //               name: item.text, // name을 바꿉니다.
-  // //               top: item.top * scale, // top을 바꿉니다.
-  // //               left: item.left * scale, // left를 바꿉니다.
-
-  // //               canvas: canvas,
-  // //               // canvas: matchingChild ? matchingChild.canvas : undefined, // Add the canvas from the matching child
-  // //             }
-  // //           })
-
-  // //           newGroup = await Promise.all(promises)
-  // //         }
-  // //         setTextBoxReading(false)
-
-  // //         let resultFile
-  // //         let resultGroup
-
-  // //         resultGroup = {
-  // //           ...copyOriginalGroup,
-  // //           children: newGroup,
-  // //           name: '대사 카피',
-  // //         }
-  // //         if (originalPsd.children) {
-  // //           originalPsd.children.push(resultGroup)
-  // //         } else {
-  // //           originalPsd.children = [resultGroup]
-  // //         }
-  // //         setWriteFile(true)
-  // //         const arrayBuffer = writePsd(originalPsd)
-
-  // //         const blob = new Blob([arrayBuffer], {
-  // //           type: 'application/octet-stream',
-  // //         })
-
-  // //         const a = document.createElement('a')
-  // //         a.href = URL.createObjectURL(blob)
-  // //         a.textContent = 'Download generated PSD'
-  // //         a.download = 'example_psd.psd'
-  // //         document.body.appendChild(a)
-  // //         setWriteFile(false)
-
-  // //         a.click()
-  // //         setExportLoading(false)
-  // //       }
-  // //     }
-  // //   }
-  // // }
-
   const onClickExport = () => {
+    if (!image) return
+    const fileExtension = file?.name.split('.').pop() ?? ''
+    const fileName = file?.name.split('.').slice(0, -1).join('.') ?? ''
+
     openModal({
       type: 'SameLayerModal',
       children: (
         <Modal
-          onClick={() => {
+          onClick={(filename: string, fileExtension: string) => {
             closeModal('SameLayerModal')
-            setFileReading(true)
-            setTimeout(() => {
-              handleCopyLayerStyle()
-            }, 1000)
+
+            handleCopyLayerStyle(filename, fileExtension)
           }}
           onClose={() => closeModal('SameLayerModal')}
-          rightButtonText='Yes'
-          leftButtonText='No'
-          title='Test'
+          rightButtonText='Export'
+          leftButtonText='Cancel'
+          title='Export file'
+          // filename={`${fileName}-result.${fileExtension}` ?? 'result.psd'}
+          filename={`${fileName}-result` ?? `result`}
+          fileExtension={fileExtension}
+          subtitle='Do you want to export a file with a text layer?'
         />
       ),
     })
@@ -597,7 +430,6 @@ const WorkSpace = () => {
       // console.timeEnd('Create and append <canvas> for layer')
     } else if (type === 'Children') {
       const image = value as AgLayer
-      setGroup(prevState => [...prevState, image])
     } else if (type === 'MainImageData') {
       const image = value
 
@@ -615,6 +447,7 @@ const WorkSpace = () => {
 
       const targetBoxWidth = targetBox.width
       const scale = targetBoxWidth / layer.originalWidth
+      const imageScale = layer.originalWidth / targetBoxWidth
 
       setScriptGroup(layer.group)
 
@@ -627,8 +460,8 @@ const WorkSpace = () => {
               text: value.name,
               left: value.left * scale,
               top: value.top * scale,
-              width: 200,
-              height: 150,
+              width: 200 * imageScale,
+              height: 150 * imageScale,
               // width: value.width * scale,
               // height:
               //   value.height * (scale / 1.1) > 500
@@ -639,40 +472,72 @@ const WorkSpace = () => {
         })
       })
       setIsLoading(false)
-    } else if (type === 'DownloadFile') {
+    } else if (type === 'DownloadFile' && timerWorkerRef.current) {
+      timerWorkerRef.current.postMessage(
+        createMessage('ProgressAction', 'stop'),
+      )
       const a = document.createElement('a')
-      a.href = URL.createObjectURL(value)
-      a.textContent = 'Download generated PSD'
-      a.download = 'example_psd.psd'
+      a.href = URL.createObjectURL(value.file)
+
+      a.download = value.fileName ?? 'result.psd'
       document.body.appendChild(a)
 
       a.click()
+      document.body.removeChild(a)
+    } else if (type === 'Error') {
+      setIsLoading(false)
+      setLoadingStatus(null)
+      console.error(value)
+      openModal({
+        type: 'ErrorModal',
+        children: (
+          <ErrorModal onClose={() => closeModal('ErrorModal')} value={value} />
+        ),
+      })
     }
   }
 
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     accept: {
-      // 'image/*': ['.png', '.jpg', '.jpeg'],
+      'image/*': ['.png', '.jpg', '.jpeg'],
       'image/vnd.adobe.photoshop': ['.psd', '.psb'],
       // 'application/pdf': ['.pdf'],
     },
     onDrop: async (acceptedFiles: File[]) => {
+      const fileExtension = acceptedFiles[0].name.split('.').pop() ?? null
       if (workerRef.current) {
-        readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
-          setIsLoading(true)
-          console.log(buffer)
-
-          setBuffer(buffer)
-          setFile(acceptedFiles[0])
-          workerRef.current?.postMessage(createMessage('ParseData', buffer), [
-            buffer,
-          ])
-        })
-
         const targetEl = document.querySelector('#target') as HTMLDivElement
         const sourceEl = document.querySelector('#source') as HTMLDivElement
-        setBalloons([])
+        setFile(acceptedFiles[0])
+        if (
+          fileExtension &&
+          (fileExtension === 'psd' || fileExtension === 'psb')
+        ) {
+          readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
+            setIsLoading(true)
+            console.log(buffer)
+
+            workerRef.current?.postMessage(createMessage('ParseData', buffer), [
+              buffer,
+            ])
+          })
+
+          setBalloons([])
+        } else if (
+          fileExtension &&
+          (fileExtension === 'png' ||
+            fileExtension === 'jpg' ||
+            fileExtension === 'jpeg')
+        ) {
+          ;[targetEl, sourceEl].map(async value => {
+            const canvas = await convertImageToCanvas(acceptedFiles[0])
+            if (canvas) {
+              value.appendChild(canvas)
+              // sourceEl.appendChild(canvas)
+            }
+          })
+        }
         if (targetEl.firstChild && sourceEl.firstChild) {
           targetEl.removeChild(targetEl.firstChild as Node)
           sourceEl.removeChild(sourceEl.firstChild as Node)
@@ -685,6 +550,9 @@ const WorkSpace = () => {
     workerRef.current = new Worker(
       new URL('/src/app/worker.ts', import.meta.url),
     )
+    timerWorkerRef.current = new Worker(
+      new URL('/src/app/timer-worker.ts', import.meta.url),
+    )
 
     const targetEl = document.querySelector('#target') as HTMLDivElement
     const sourceEl = document.querySelector('#source') as HTMLDivElement
@@ -694,6 +562,18 @@ const WorkSpace = () => {
       workerCallback(e, [targetEl, sourceEl])
       // workerCallback(e, sourceEl)
     })
+
+    timerWorkerRef.current.addEventListener(
+      'message',
+      (e: MessageEvent<any>) => {
+        const { type, timestamp, value } = e.data
+        validateMessage(e.data)
+
+        if (type === 'Progress') {
+          setLoadingStatus(value)
+        }
+      },
+    )
   }, [])
 
   useEffect(() => {
@@ -717,6 +597,21 @@ const WorkSpace = () => {
       }
     }
   }, [isSynced])
+
+  useEffect(() => {
+    function handleClickOutside(event: any) {
+      if (headerRef.current && !headerRef.current.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+
+    // Bind the event listener
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      // Unbind the event listener on clean up
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   // useEffect(() => {
   //   const updateTargetWidth = () => {
@@ -780,11 +675,17 @@ const WorkSpace = () => {
   //     clearInterval(timer)
   //   }
   // }, [fileReading, textBoxReading, writeFile])
+  const openMenu = (ref: React.MutableRefObject<any>) => {
+    setOpen(false)
+    ref.current.click()
+  }
+
+  const handleOpen = (e: React.MouseEvent<HTMLDivElement>) => openMenu(inputRef)
 
   return (
     // <main className={styles.main}>
     <>
-      {fileReading && (
+      {loadingStatus && (
         <Box
           sx={{
             position: 'fixed',
@@ -797,36 +698,34 @@ const WorkSpace = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
+            padding: '24px',
           }}
         >
-          <Box sx={{ border: '1px solid', width: '500px' }}>
-            <LinearProgress color='success' />
+          <Box
+            sx={{
+              width: '300px',
+              backgroundColor: 'rgba(255,255,255,0.01)',
+
+              borderRadius: '10px', // 테두리를 둥글게 설정
+              boxShadow: 3, // 그림자 효과를 추가
+              p: 2, // 패딩을 추가
+            }}
+          >
+            <LinearProgress color='secondary' />
+            <Typography
+              color='#ffffff'
+              fontSize={16}
+              fontWeight={500}
+              lineHeight='20px'
+              padding='10px'
+              mt='10px'
+            >
+              {loadingStatus}
+            </Typography>
           </Box>
-          File Reading...
         </Box>
       )}
-      {textBoxReading && (
-        <Box
-          sx={{
-            position: 'fixed',
-            zIndex: 9999,
-            left: 0,
-            top: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <LinearProgress />
-          Text box reading...
-        </Box>
-      )}
-      {/* {(fileReading || textBoxReading || writeFile) && (
-        
-      )} */}
+
       {isLoading && (
         <Box
           sx={{
@@ -842,9 +741,6 @@ const WorkSpace = () => {
             alignItems: 'center',
           }}
         >
-          {conversionTime && (
-            <div>Conversion Time: {conversionTime ?? 0} ms</div>
-          )}
           <CircularProgress disableShrink sx={{ mt: 6 }} />
         </Box>
       )}
@@ -852,93 +748,104 @@ const WorkSpace = () => {
       <Box
         sx={{
           display: 'flex',
-          position: 'relative',
-          gap: 4,
-          paddingTop: '75px',
+          // position: 'relative',
+          // gap: 4,
+          // paddingTop: '75px',
           width: '100%',
+          flexDirection: 'column',
         }}
       >
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-
-            display: 'flex',
-            backgroundColor: '#f5f5f5',
-            width: '100%',
-
-            zIndex: 101,
-            paddingRight: '28px',
-
-            height: '70px',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              color: 'green',
-              gap: '4px',
-              minWidth: '300px',
-              justifyContent: 'flex-end',
-              marginLeft: '15px',
-              paddingTop: '1px',
-              width: '300px',
-              alignItems: 'center',
-            }}
-          >
+        <Header ref={headerRef}>
+          <Wrapper onClick={() => setOpen(!open)}>File</Wrapper>
+          {image ? (
             <Box
-              // sx={{ ...style }}
+              sx={{
+                display: 'flex',
+                flex: 1,
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              <Tooltip title='Sync scroll'>
+                <IconButton
+                  onClick={() => setIsSynced(!isSynced)}
+                  sx={{ padding: 0 }}
+                  disabled={!image}
+                >
+                  <Icon
+                    icon='fluent:phone-vertical-scroll-24-filled'
+                    fontSize='1.5rem'
+                    color={isSynced ? '#66FF66' : 'white'}
+                  />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title='Add Textbox'>
+                <IconButton
+                  onClick={() => setAddText(!addText)}
+                  sx={{ padding: 0 }}
+                  disabled={!image}
+                >
+                  <Icon
+                    icon='cil:speech'
+                    fontSize='1.3rem'
+                    color={addText ? '#66FF66' : 'white'}
+                  />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          ) : null}
+
+          <SubWrapper open={open}>
+            <div className='enab' onClick={handleOpen}>
+              <span className='check'></span>
+              <span className='label'>Open...</span>
+              <span className='right'></span>
+            </div>
+            <div
+              className={`enab ${image ? '' : 'disable'}`}
+              onClick={onClickExport}
+            >
+              <span className='check'></span>
+              <span className='label'>Export</span>
+              <span className='right'></span>
+            </div>
+            <div
+              className={`enab ${image ? '' : 'disable'}`}
+              onClick={() => {
+                setOpen(false)
+                setIsSynced(!isSynced)
+              }}
+            >
+              <span className='check'>
+                {isSynced ? (
+                  <NextImage
+                    src='/green-dot.svg'
+                    alt='dot'
+                    width='15'
+                    height='15'
+                  ></NextImage>
+                ) : (
+                  ''
+                )}
+              </span>
+              <span className='label'>Sync scroll</span>
+              <span className='right'></span>
+            </div>
+
+            <Box
               {...getRootProps({ className: 'dropzone' })}
               id='upload'
+              className='hidden'
             >
-              <input {...getInputProps()} />
-              {/* <p>Drag 'n' drop some files here, or click to select files</p> */}
+              <input {...getInputProps()} ref={inputRef} />
               <Button>File upload</Button>
-              {/* <input type='file' accept='.psd,.psb' id='selectFile' /> */}
             </Box>
-          </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'center',
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isSynced}
-                  onChange={() => setIsSynced(!isSynced)}
-                  disabled={image === null}
-                />
-              }
-              label='Sync scroll'
-              sx={{ minWidth: '180px', paddingTop: 1 }}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={addText}
-                  onChange={() => setAddText(!addText)}
-                  disabled={image === null}
-                />
-              }
-              label='Add Text Box'
-              sx={{ minWidth: '180px', paddingTop: 1 }}
-            />
-            <Button
-              onClick={onClickExport}
-              // onClick={clickEvent.onClickSaveButton}
-              // disabled={!values.selectedImageFile}
-            >
-              Export
-            </Button>
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', width: '100%' }}>
+          </SubWrapper>
+        </Header>
+
+        <Box
+          sx={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)' }}
+        >
           <Box
             id='source'
             sx={{
@@ -967,6 +874,7 @@ const WorkSpace = () => {
               flexDirection: 'column',
               flex: 1,
               maxWidth: '50vw',
+
               // height: image ? image.height : '100%',
               margin: '0 auto',
               cursor: addText ? 'copy' : 'default',
@@ -1004,3 +912,173 @@ const WorkSpace = () => {
 }
 
 export default WorkSpace
+
+const Header = styled.div`
+  width: 100%;
+  height: 32px;
+  display: flex;
+  justify-content: space-between;
+  background-color: #000000;
+
+  * {
+    user-select: none;
+  }
+`
+
+const Wrapper = styled.div`
+  display: flex;
+  flex: 1;
+  margin: 4px;
+  padding: 2px 5px 3px 5px;
+  padding-left: 6px;
+  padding-right: 6px;
+  cursor: default;
+  color: #ffffff;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.25);
+    border-radius: 3px;
+  }
+`
+
+const SubWrapper = styled.div<{ open: boolean }>`
+  display: ${p => (p.open ? 'block' : 'none')};
+  position: absolute;
+  z-index: 10;
+  top: 36px;
+  width: 200px;
+  background-color: ${hexToRGBA('#666666', 0.9)};
+  color: #f0f0f0;
+  border-radius: 4px;
+  margin-left: 2px;
+  // margin-left: 1em;
+  box-shadow: 0px 0px 20px rgb(0 0 0 / 20%);
+
+  .enab {
+    padding: 0.5em 1em 0.5em 0.7em;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    &.disable {
+      color: #000;
+    }
+
+    &:hover {
+      background-color: rgba(190, 230, 255, 1);
+    }
+  }
+
+  .check {
+    // display: inline-block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+  }
+
+  .right {
+    float: right;
+    margin-left: 2em;
+    opacity: 0.7;
+  }
+
+  .hidden {
+    display: none;
+  }
+`
+
+{
+  /* <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            display: 'flex',
+            backgroundColor: '#f8f9fa', // Light grey background
+            width: '100%',
+            boxShadow: '0 2px 4px 0 rgba(0,0,0,0.2)', // Add shadow
+            zIndex: 101,
+            paddingRight: '28px',
+            height: '70px',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              color: '#28a745', // Bright green text
+              gap: '4px',
+              minWidth: '300px',
+              justifyContent: 'flex-end',
+              marginLeft: '15px',
+              paddingTop: '1px',
+              width: '300px',
+              alignItems: 'center',
+              fontFamily: '"Roboto", sans-serif',
+            }}
+          >
+            <Box {...getRootProps({ className: 'dropzone' })} id='upload'>
+              <input {...getInputProps()} />
+              <Button>File upload</Button>
+            </Box>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isSynced}
+                  onChange={() => setIsSynced(!isSynced)}
+                  disabled={image === null}
+                />
+              }
+              label='Sync scroll'
+              sx={{ minWidth: '180px', paddingTop: 1 }}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={addText}
+                  onChange={() => setAddText(!addText)}
+                  disabled={image === null}
+                />
+              }
+              label='Add Text Box'
+              sx={{ minWidth: '180px', paddingTop: 1 }}
+            />
+
+            <Button
+              onClick={() => {
+                onClickExport()
+              }}
+              sx={{
+                flex: 1,
+                textTransform: 'none',
+                display: 'flex',
+                height: '44px',
+                padding: '10px 18px',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderRadius: '8px',
+                border: '1px solid #D0D5DD',
+                boxShadow: '0px 1px 2px 0px rgba(16, 24, 40, 0.05)',
+                background: '#7F56D9',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: hexToRGBA('#7F56D9', 0.8),
+                },
+              }}
+            >
+              Export
+            </Button>
+          </Box>
+        </Box> */
+}

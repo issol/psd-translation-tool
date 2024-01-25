@@ -94,12 +94,23 @@ export type WriteFileMessage = ExampleMessageBase<
       psd: AgPsd
     } | null
     box: BalloonType[]
-    group: AgLayer[] | null
-    image: ImageBitmap
+    // group: AgLayer[] | null
+    targetBoxWidth: number
+    scriptGroup: AgLayer | undefined | null
+    buffer: ArrayBuffer
+    isPsb: boolean
+    fileName: string
   }
 >
 
-export type DownloadFileMessage = ExampleMessageBase<'DownloadFile', Blob>
+export type ProgressMessage = ExampleMessageBase<'Progress', string | null>
+export type ProgressActionMessage = ExampleMessageBase<'ProgressAction', string>
+export type ErrorMessage = ExampleMessageBase<'Error', string>
+
+export type DownloadFileMessage = ExampleMessageBase<
+  'DownloadFile',
+  { file: Blob; fileName: string }
+>
 
 export type ExampleMessage =
   | LayerMessage
@@ -109,6 +120,9 @@ export type ExampleMessage =
   | WriteFileMessage
   | DownloadFileMessage
   | ChildrenMessage
+  | ProgressMessage
+  | ProgressActionMessage
+  | ErrorMessage
 
 /**
  * Checks if a value is an {@link ExampleMessage}.
@@ -139,6 +153,9 @@ export function validateMessage(data: unknown): asserts data is ExampleMessage {
     case 'WriteFile':
     case 'DownloadFile':
     case 'Children':
+    case 'Progress':
+    case 'ProgressAction':
+    case 'Error':
       // These are valid, so pass
       return
     default:

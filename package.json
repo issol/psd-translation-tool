@@ -16,6 +16,7 @@
     "@mui/material": "^5.15.5",
     "@webtoon/psd": "^0.4.0",
     "ag-psd": "^19.0.1",
+    "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "next": "14.0.4",
     "react": "^18",
@@ -24,6 +25,8 @@
     "recoil": "^0.7.7"
   },
   "devDependencies": {
+    "@iconify/react": "^4.1.1",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
