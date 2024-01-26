@@ -4,9 +4,16 @@ import {
   Box,
   Button,
   CircularProgress,
+  ClickAwayListener,
   FormControlLabel,
+  Grow,
   IconButton,
   LinearProgress,
+  Menu,
+  MenuItem,
+  MenuList,
+  Paper,
+  Popper,
   Switch,
   Tooltip,
   Typography,
@@ -73,6 +80,7 @@ const WorkSpace = () => {
   const inputRef = useRef<any>(null)
   const panel = useRef<any>(null)
   const headerRef = useRef<any>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
   const { openModal, closeModal } = useModal()
 
   const [open, setOpen] = useState(false)
@@ -675,12 +683,43 @@ const WorkSpace = () => {
   //     clearInterval(timer)
   //   }
   // }, [fileReading, textBoxReading, writeFile])
-  const openMenu = (ref: React.MutableRefObject<any>) => {
-    setOpen(false)
-    ref.current.click()
+  const handleToggle = () => {
+    setOpen(prevOpen => !prevOpen)
   }
 
-  const handleOpen = (e: React.MouseEvent<HTMLDivElement>) => openMenu(inputRef)
+  const handleClose = (event: Event | React.SyntheticEvent) => {
+    if (
+      anchorRef.current &&
+      anchorRef.current.contains(event.target as HTMLElement)
+    ) {
+      return
+    }
+
+    setOpen(false)
+  }
+
+  function handleListKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      setOpen(false)
+    } else if (event.key === 'Escape') {
+      setOpen(false)
+    }
+  }
+
+  // return focus to the button when we transitioned from !open -> open
+  const prevOpen = useRef(open)
+  useEffect(() => {
+    if (prevOpen.current === true && open === false) {
+      anchorRef.current!.focus()
+    }
+
+    prevOpen.current = open
+  }, [open])
+
+  const handleOpen = () => {
+    inputRef.current?.click()
+  }
 
   return (
     // <main className={styles.main}>
@@ -756,7 +795,31 @@ const WorkSpace = () => {
         }}
       >
         <Header ref={headerRef}>
-          <Wrapper onClick={() => setOpen(!open)}>File</Wrapper>
+          <Box
+            ref={anchorRef}
+            id='composition-button'
+            aria-controls={open ? 'composition-menu' : undefined}
+            aria-expanded={open ? 'true' : undefined}
+            aria-haspopup='true'
+            onClick={handleToggle}
+            sx={{
+              display: 'flex',
+              flex: 1,
+              margin: '4px',
+              padding: '2px 5px 3px 5px',
+              paddingLeft: '6px',
+              paddingRight: '6px',
+              cursor: 'default',
+              color: '#ffffff',
+
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                borderRadius: '3px',
+              },
+            }}
+          >
+            File
+          </Box>
           {image ? (
             <Box
               sx={{
@@ -794,6 +857,62 @@ const WorkSpace = () => {
               </Tooltip>
             </Box>
           ) : null}
+          <Popper
+            open={open}
+            anchorEl={anchorRef.current}
+            role={undefined}
+            placement='bottom-start'
+            transition
+            disablePortal
+          >
+            {({ TransitionProps, placement }) => (
+              <Grow
+                {...TransitionProps}
+                style={{
+                  transformOrigin:
+                    placement === 'bottom-start' ? 'left top' : 'left bottom',
+                }}
+              >
+                <Paper>
+                  <ClickAwayListener onClickAway={handleClose}>
+                    <MenuList
+                      autoFocusItem={open}
+                      id='composition-menu'
+                      aria-labelledby='composition-button'
+                      onKeyDown={handleListKeyDown}
+                      sx={{ backgroundColor: hexToRGBA('#666666', 0.9) }}
+                    >
+                      <MenuItem
+                        onClick={event => {
+                          handleClose(event)
+                          handleOpen()
+                        }}
+                        sx={{
+                          backgroundColor: hexToRGBA('#666666', 0.9),
+                          color: '#f0f0f0',
+                          borderRadius: '4px',
+                          marginLeft: '2px',
+                        }}
+                      >
+                        Open
+                      </MenuItem>
+                      <MenuItem
+                        onClick={event => {
+                          handleClose(event)
+                          onClickExport()
+                        }}
+                      >
+                        Export
+                      </MenuItem>
+                      {/* <MenuItem onClick={handleClose}>Logout</MenuItem> */}
+                    </MenuList>
+                  </ClickAwayListener>
+                </Paper>
+              </Grow>
+            )}
+          </Popper>
+          {/* <Wrapper onClick={() => setOpen(!open)}>File</Wrapper>
+         
 
           <SubWrapper open={open}>
             <div className='enab' onClick={handleOpen}>
@@ -823,7 +942,7 @@ const WorkSpace = () => {
                     alt='dot'
                     width='15'
                     height='15'
-                  ></NextImage>
+                  />
                 ) : (
                   ''
                 )}
@@ -832,15 +951,17 @@ const WorkSpace = () => {
               <span className='right'></span>
             </div>
 
-            <Box
-              {...getRootProps({ className: 'dropzone' })}
-              id='upload'
-              className='hidden'
-            >
-              <input {...getInputProps()} ref={inputRef} />
-              <Button>File upload</Button>
-            </Box>
-          </SubWrapper>
+           
+          </SubWrapper> */}
+          <Box
+            {...getRootProps({ className: 'dropzone' })}
+            id='upload'
+            className='hidden'
+            sx={{ display: 'none' }}
+          >
+            <input {...getInputProps()} ref={inputRef} />
+            <Button>File upload</Button>
+          </Box>
         </Header>
 
         <Box
@@ -961,12 +1082,18 @@ const SubWrapper = styled.div<{ open: boolean }>`
     align-items: center;
     gap: 4px;
 
-    &.disable {
-      color: #000;
-    }
-
     &:hover {
       background-color: rgba(190, 230, 255, 1);
+    }
+
+    &.disable {
+      color: #000;
+      cursor: default;
+
+      &:hover {
+        cursor: not-allowed;
+        background-color: inherit;
+      }
     }
   }
 

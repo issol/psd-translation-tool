@@ -7,21 +7,23 @@ import {
   readPsd,
   byteArrayToBase64,
   writePsd,
+  initializeCanvas,
 } from 'ag-psd'
 
 import { BalloonType } from './workspace/page'
+// import { initializeCanvas } from './helpers'
 
 declare const self: DedicatedWorkerGlobalScope
-declare function initializeCanvas(
-  createCanvasMethod: (
-    width: number,
-    height: number,
-  ) => OffscreenCanvas | HTMLCanvasElement,
-  createCanvasFromDataMethod?: (
-    data: Uint8Array,
-  ) => OffscreenCanvas | HTMLCanvasElement,
-  createImageDataMethod?: (width: number, height: number) => ImageData,
-): void
+// declare function initializeCanvas(
+//   createCanvasMethod: (
+//     width: number,
+//     height: number,
+//   ) => OffscreenCanvas | HTMLCanvasElement,
+//   createCanvasFromDataMethod?: (
+//     data: Uint8Array,
+//   ) => OffscreenCanvas | HTMLCanvasElement,
+//   createImageDataMethod?: (width: number, height: number) => ImageData,
+// ): void
 
 const DefaultGroup: AgLayer = {
   blendMode: 'normal',
@@ -65,43 +67,6 @@ const createCanvasFromData = (data: Uint8Array) => {
 }
 
 initializeCanvas(createCanvas, createCanvasFromData)
-
-async function addCanvasToChildren(node: AgLayer): Promise<AgLayer> {
-  let newNode = { ...node }
-
-  if (newNode.imageData) {
-    const canvasEl = createCanvas(
-      newNode.imageData.width,
-      newNode.imageData.height,
-    )
-    const context = canvasEl.getContext(
-      '2d',
-    ) as OffscreenCanvasRenderingContext2D
-    const imageData = new ImageData(
-      new Uint8ClampedArray(newNode.imageData.data),
-      newNode.imageData.width,
-      newNode.imageData.height,
-    )
-    canvasEl.width = newNode.imageData.width
-    canvasEl.height = newNode.imageData.height
-    if (context) {
-      context.putImageData(imageData, 0, 0)
-      newNode.canvas = canvasEl
-    }
-  }
-
-  if (newNode.children) {
-    const childrenPromises = newNode.children.map(
-      child =>
-        new Promise<AgLayer>(resolve =>
-          requestAnimationFrame(() => resolve(addCanvasToChildren(child))),
-        ),
-    )
-    newNode.children = await Promise.all(childrenPromises)
-  }
-
-  return newNode
-}
 
 const createCanvasWithText = (item: BalloonType, scale: number) => {
   const canvas = createCanvas(item.width * scale + 15, item.height * scale)

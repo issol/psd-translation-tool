@@ -1,0 +1,37 @@
+diff --git a/node_modules/ag-psd/dist/helpers.d.ts b/node_modules/ag-psd/dist/helpers.d.ts
+index 24c84a8..71e6c7e 100644
+--- a/node_modules/ag-psd/dist/helpers.d.ts
++++ b/node_modules/ag-psd/dist/helpers.d.ts
+@@ -87,7 +87,7 @@ export declare function decodeBitmap(input: PixelArray, output: PixelArray, widt
+ export declare function writeDataRaw(data: PixelData, offset: number, width: number, height: number): Uint8Array | undefined;
+ export declare function writeDataRLE(buffer: Uint8Array, { data, width, height }: PixelData, offsets: number[], large: boolean): Uint8Array | undefined;
+ export declare function writeDataZipWithoutPrediction({ data, width, height }: PixelData, offsets: number[]): Uint8Array;
+-export declare let createCanvas: (width: number, height: number) => HTMLCanvasElement;
+-export declare let createCanvasFromData: (data: Uint8Array) => HTMLCanvasElement;
++export declare let createCanvas: (width: number, height: number) => OffscreenCanvas | HTMLCanvasElement;
++export declare let createCanvasFromData: (data: Uint8Array) =>OffscreenCanvas | HTMLCanvasElement;
+ export declare let createImageData: (width: number, height: number) => ImageData;
+-export declare function initializeCanvas(createCanvasMethod: (width: number, height: number) => HTMLCanvasElement, createCanvasFromDataMethod?: (data: Uint8Array) => HTMLCanvasElement, createImageDataMethod?: (width: number, height: number) => ImageData): void;
++export declare function initializeCanvas(createCanvasMethod: (width: number, height: number) => OffscreenCanvas | HTMLCanvasElement, createCanvasFromDataMethod?: (data: Uint8Array) =>OffscreenCanvas | HTMLCanvasElement, createImageDataMethod?: (width: number, height: number) => ImageData): void;
+diff --git a/node_modules/ag-psd/dist/psd.d.ts b/node_modules/ag-psd/dist/psd.d.ts
+index 433c866..d449a61 100644
+--- a/node_modules/ag-psd/dist/psd.d.ts
++++ b/node_modules/ag-psd/dist/psd.d.ts
+@@ -1590,7 +1590,7 @@ export interface Layer extends LayerAdditionalInfo {
+     effectsOpen?: boolean;
+     hidden?: boolean;
+     clipping?: boolean;
+-    canvas?: HTMLCanvasElement;
++    canvas?: HTMLCanvasElement | OffscreenCanvas;
+     imageData?: ImageData;
+     children?: Layer[];
+     /** Applies only for layer groups. */
+@@ -1603,7 +1603,7 @@ export interface Psd extends LayerAdditionalInfo {
+     bitsPerChannel?: number;
+     colorMode?: ColorMode;
+     children?: Layer[];
+-    canvas?: HTMLCanvasElement;
++    canvas?: HTMLCanvasElement | OffscreenCanvas;
+     imageData?: ImageData;
+     imageResources?: ImageResources;
+     linkedFiles?: LinkedFile[];
