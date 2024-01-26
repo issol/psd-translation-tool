@@ -3,6 +3,11 @@
  */
 const nextConfig = {
   output: 'export',
+  webpack: config => {
+    config.resolve.alias.canvas = false
+
+    return config
+  },
 
   // Optional: Change links `/me` -> `/me/` and emit `/me.html` -> `/me/index.html`
   // trailingSlash: true,

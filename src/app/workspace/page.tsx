@@ -35,6 +35,9 @@ import { hexToRGBA } from '../utils/hexToRGBA'
 import styled from '@emotion/styled'
 import NextImage from 'next/image'
 import { Icon } from '@iconify/react'
+import { pdfjs, Document, Page } from 'react-pdf'
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
 
 export interface BalloonType {
   idx: string
@@ -105,6 +108,8 @@ const WorkSpace = () => {
   const [loadingStatus, setLoadingStatus] = useRecoilState(loadingStatusState)
 
   const [file, setFile] = useState<File | null>(null)
+
+  const [pdfFile, setPdfFile] = useState<string | null>(null)
 
   const canvasPool: HTMLCanvasElement[] = []
 
@@ -378,7 +383,13 @@ const WorkSpace = () => {
   }
 
   const onClickExport = () => {
-    if (!image) return
+    if (
+      file?.name.split('.').pop() === 'psd' ||
+      file?.name.split('.').pop() === 'psb'
+        ? !image
+        : !pdfFile
+    )
+      return
     const fileExtension = file?.name.split('.').pop() ?? ''
     const fileName = file?.name.split('.').slice(0, -1).join('.') ?? ''
 
@@ -507,7 +518,7 @@ const WorkSpace = () => {
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg'],
       'image/vnd.adobe.photoshop': ['.psd', '.psb'],
-      // 'application/pdf': ['.pdf'],
+      'application/pdf': ['.pdf'],
     },
     onDrop: async (acceptedFiles: File[]) => {
       const fileExtension = acceptedFiles[0].name.split('.').pop() ?? null
@@ -543,6 +554,7 @@ const WorkSpace = () => {
             }
           })
         } else if (fileExtension && fileExtension === 'pdf') {
+          setPdfFile(URL.createObjectURL(acceptedFiles[0]))
         }
 
         if (targetEl.firstChild && sourceEl.firstChild) {
@@ -552,6 +564,8 @@ const WorkSpace = () => {
       }
     },
   })
+
+  const [numPages, setNumPages] = useState<number>(0)
 
   useEffect(() => {
     workerRef.current = new Worker(
@@ -887,6 +901,7 @@ const WorkSpace = () => {
             placement='bottom-start'
             transition
             disablePortal
+            sx={{ zIndex: 1000 }}
           >
             {({ TransitionProps, placement }) => (
               <Grow
@@ -932,7 +947,12 @@ const WorkSpace = () => {
                           handleClose(event, 'file')
                           onClickExport()
                         }}
-                        disabled={!image}
+                        disabled={
+                          file?.name.split('.').pop() === 'psd' ||
+                          file?.name.split('.').pop() === 'psb'
+                            ? !image
+                            : !pdfFile
+                        }
                         sx={{
                           width: '200px',
                           color: '#f0f0f0',
@@ -956,6 +976,7 @@ const WorkSpace = () => {
             placement='bottom-start'
             transition
             disablePortal
+            sx={{ zIndex: 1000 }}
           >
             {({ TransitionProps, placement }) => (
               <Grow
@@ -995,7 +1016,7 @@ const WorkSpace = () => {
                           display: 'flex',
                           justifyContent: 'space-between',
                         }}
-                        disabled={!image}
+                        disabled={!image || !pdfFile}
                       >
                         Add text box
                         {addText ? (
@@ -1097,7 +1118,7 @@ const WorkSpace = () => {
             <Button>File upload</Button>
           </Box>
 
-          {image ? (
+          {image || pdfFile ? (
             <Box
               sx={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}
             >
@@ -1113,7 +1134,6 @@ const WorkSpace = () => {
                   <IconButton
                     onClick={() => setIsSynced(!isSynced)}
                     sx={{ padding: 0 }}
-                    disabled={!image}
                   >
                     <Icon
                       icon='fluent:phone-vertical-scroll-24-filled'
@@ -1126,7 +1146,6 @@ const WorkSpace = () => {
                   <IconButton
                     onClick={() => setAddText(!addText)}
                     sx={{ padding: 0 }}
-                    disabled={!image}
                   >
                     <Icon
                       icon='cil:speech'
@@ -1168,7 +1187,18 @@ const WorkSpace = () => {
               border: '1px solid',
               '::-webkit-scrollbar': { display: 'none' },
             }}
-          ></Box>
+          >
+            {pdfFile ? (
+              <Document
+                file={file}
+                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              >
+                {Array.from(new Array(numPages), (el, index) => (
+                  <Page key={`page_${index + 1}`} pageNumber={index + 1} />
+                ))}
+              </Document>
+            ) : null}
+          </Box>
 
           {/* <section>
           <div className='section-content'> */}
@@ -1196,6 +1226,17 @@ const WorkSpace = () => {
               },
             }}
           >
+            {' '}
+            {pdfFile ? (
+              <Document
+                file={file}
+                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              >
+                {Array.from(new Array(numPages), (el, index) => (
+                  <Page key={`page_${index + 1}`} pageNumber={index + 1} />
+                ))}
+              </Document>
+            ) : null}
             {balloons.map(balloon => (
               // <Box id={`balloon-${balloon.idx}`} key={balloon.idx}>
               <Balloon
