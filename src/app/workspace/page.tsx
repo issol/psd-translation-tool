@@ -80,6 +80,7 @@ const loadingStatusState = atom<string | null>({
 const WorkSpace = () => {
   const workerRef = useRef<Worker>()
   const timerWorkerRef = useRef<Worker>()
+  const layerWorkerRef = useRef<Worker>()
   const inputRef = useRef<any>(null)
 
   const headerRef = useRef<any>(null)
@@ -96,8 +97,8 @@ const WorkSpace = () => {
     pixelData: Uint8ClampedArray
     width: number
     height: number
-    layerCount: number
-    psd: AgPsd
+    // layerCount: number
+    // psd: AgPsd
   } | null>(null)
   const [resizing, setResizing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -393,6 +394,10 @@ const WorkSpace = () => {
     const fileExtension = file?.name.split('.').pop() ?? ''
     const fileName = file?.name.split('.').slice(0, -1).join('.') ?? ''
 
+    if (pdfFile) {
+      const a = boundaryRef.current?.querySelector('#target')
+    }
+
     openModal({
       type: 'SameLayerModal',
       children: (
@@ -451,6 +456,8 @@ const WorkSpace = () => {
       element.map(value => {
         value.appendChild(generateCanvas(image))
       })
+
+      setIsLoading(false)
     } else if (type === 'Group') {
       const layer = value
       const targetBox = boundaryRef.current?.getBoundingClientRect()
@@ -476,8 +483,8 @@ const WorkSpace = () => {
               text: value.name,
               left: value.left * scale,
               top: value.top * scale,
-              width: defaultWidth * imageScale,
-              height: defaultHeight * imageScale,
+              width: defaultWidth + defaultWidth * scale,
+              height: defaultHeight + defaultHeight * scale,
               // width: value.width * scale,
               // height:
               //   value.height * (scale / 1.1) > 500
@@ -487,7 +494,6 @@ const WorkSpace = () => {
           ]
         })
       })
-      setIsLoading(false)
     } else if (type === 'DownloadFile' && timerWorkerRef.current) {
       timerWorkerRef.current.postMessage(
         createMessage('ProgressAction', 'stop'),
@@ -522,7 +528,7 @@ const WorkSpace = () => {
     },
     onDrop: async (acceptedFiles: File[]) => {
       const fileExtension = acceptedFiles[0].name.split('.').pop() ?? null
-      if (workerRef.current) {
+      if (workerRef.current && layerWorkerRef.current) {
         const targetEl = document.querySelector('#target') as HTMLDivElement
         const sourceEl = document.querySelector('#source') as HTMLDivElement
         setFile(acceptedFiles[0])
@@ -532,11 +538,16 @@ const WorkSpace = () => {
         ) {
           readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
             setIsLoading(true)
+            const bufferCopy = buffer.slice(0)
             console.log(buffer)
 
             workerRef.current?.postMessage(createMessage('ParseData', buffer), [
               buffer,
             ])
+            layerWorkerRef.current?.postMessage(
+              createMessage('ParseLayer', bufferCopy),
+              [bufferCopy],
+            )
           })
 
           setBalloons([])
@@ -574,6 +585,9 @@ const WorkSpace = () => {
     timerWorkerRef.current = new Worker(
       new URL('/src/app/timer-worker.ts', import.meta.url),
     )
+    layerWorkerRef.current = new Worker(
+      new URL('/src/app/layer-worker.ts', import.meta.url),
+    )
 
     const targetEl = document.querySelector('#target') as HTMLDivElement
     const sourceEl = document.querySelector('#source') as HTMLDivElement
@@ -583,6 +597,14 @@ const WorkSpace = () => {
       workerCallback(e, [targetEl, sourceEl])
       // workerCallback(e, sourceEl)
     })
+
+    layerWorkerRef.current.addEventListener(
+      'message',
+      (e: MessageEvent<any>) => {
+        workerCallback(e, [targetEl, sourceEl])
+        // workerCallback(e, sourceEl)
+      },
+    )
 
     timerWorkerRef.current.addEventListener(
       'message',

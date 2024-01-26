@@ -131,35 +131,54 @@ self.addEventListener('message', async ({ data }) => {
   try {
     if (type === 'ParseData') {
       console.time('Parse PSD file')
+      console.log(value)
 
-      const psd: any = Psd.parse(value)
+      // const psd: any = Psd.parse(value)
+      // console.log(psd)
+
       const agPsd = readPsd(value, {
         // skipLayerImageData: true,
-        useImageData: true,
+        // useImageData: true,
         skipThumbnail: true,
       })
 
       console.log(agPsd)
-      const { canvas, children, ...agPsdWithoutCanvas } = agPsd
+
+      if (agPsd.canvas) {
+        const context = (agPsd.canvas as OffscreenCanvas)?.getContext('2d')
+
+        if (context) {
+          const imageData = context.getImageData(
+            0,
+            0,
+            agPsd.canvas.width,
+            agPsd.canvas.height,
+          )
+          const pixelData = imageData.data // This is a Uint8ClampedArray
+
+          self.postMessage(
+            createMessage('MainImageData', {
+              pixelData,
+
+              width: agPsd.width,
+              height: agPsd.height,
+            }),
+          )
+        }
+      }
+
+      // const { canvas, children, ...agPsdWithoutCanvas } = agPsd
+      console.log(agPsd)
 
       // const bmp = (canvas as OffscreenCanvas)?.transferToImageBitmap()
 
       console.timeEnd('Parse PSD file')
+      console.log(agPsd)
 
-      console.log(psd)
+      // console.log(psd)
 
-      const pixelData = await psd.composite()
-
-      self.postMessage(
-        createMessage('MainImageData', {
-          pixelData,
-
-          width: psd.width,
-          height: psd.height,
-          psd: agPsdWithoutCanvas,
-          layerCount: psd.layers.length,
-        }),
-      )
+      // const pixelData = await psd.composite()
+      // console.log(pixelData)
 
       // for (const [index, child] of children?.entries() ?? []) {
       //   self.postMessage(createMessage('Children', child))
@@ -183,25 +202,6 @@ self.addEventListener('message', async ({ data }) => {
       //     // [pixelData.buffer],
       //   )
       // }
-
-      let originalGroup: AgLayer | undefined = children?.find(
-        value => value.name == '대사',
-      )
-
-      let box =
-        originalGroup?.children?.map(value => ({
-          top: value.top!,
-          left: value.left!,
-          name: value.name ?? '',
-        })) ?? []
-
-      self.postMessage(
-        createMessage('Group', {
-          box: box,
-          group: originalGroup,
-          originalWidth: psd.width,
-        }),
-      )
     } else if (type === 'WriteFile') {
       const {
         originalFile,
@@ -216,8 +216,6 @@ self.addEventListener('message', async ({ data }) => {
           pixelData: Uint8ClampedArray
           width: number
           height: number
-          layerCount: number
-          psd: AgPsd
         } | null
         fileName: string
         box: BalloonType[]

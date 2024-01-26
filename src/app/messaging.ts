@@ -33,6 +33,7 @@ interface ExampleMessageBase<Type extends string, Value> {
  * This is meant to be sent by the main thread to the worker.
  */
 export type ParsePsdMessage = ExampleMessageBase<'ParseData', ArrayBuffer>
+export type ParseLayerMessage = ExampleMessageBase<'ParseLayer', ArrayBuffer>
 
 /**
  * Message that contains the main image of a PSD file as an {@link ImageData}
@@ -45,8 +46,8 @@ export type MainImageDataMessage = ExampleMessageBase<
     pixelData: Uint8ClampedArray
     width: number
     height: number
-    layerCount: number
-    psd: AgPsd
+    // layerCount: number
+    // psd: AgPsd
   }
 >
 
@@ -90,8 +91,6 @@ export type WriteFileMessage = ExampleMessageBase<
       pixelData: Uint8ClampedArray
       width: number
       height: number
-      layerCount: number
-      psd: AgPsd
     } | null
     box: BalloonType[]
     // group: AgLayer[] | null
@@ -123,6 +122,7 @@ export type ExampleMessage =
   | ProgressMessage
   | ProgressActionMessage
   | ErrorMessage
+  | ParseLayerMessage
 
 /**
  * Checks if a value is an {@link ExampleMessage}.
@@ -156,6 +156,7 @@ export function validateMessage(data: unknown): asserts data is ExampleMessage {
     case 'Progress':
     case 'ProgressAction':
     case 'Error':
+    case 'ParseLayer':
       // These are valid, so pass
       return
     default:
