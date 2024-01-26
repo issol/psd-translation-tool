@@ -9,10 +9,19 @@ import {
   writePsd,
 } from 'ag-psd'
 
-import { initializeCanvas } from 'ag-psd/dist/helpers'
 import { BalloonType } from './workspace/page'
 
 declare const self: DedicatedWorkerGlobalScope
+declare function initializeCanvas(
+  createCanvasMethod: (
+    width: number,
+    height: number,
+  ) => OffscreenCanvas | HTMLCanvasElement,
+  createCanvasFromDataMethod?: (
+    data: Uint8Array,
+  ) => OffscreenCanvas | HTMLCanvasElement,
+  createImageDataMethod?: (width: number, height: number) => ImageData,
+): void
 
 const DefaultGroup: AgLayer = {
   blendMode: 'normal',
