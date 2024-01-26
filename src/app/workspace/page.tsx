@@ -78,20 +78,14 @@ const WorkSpace = () => {
   const workerRef = useRef<Worker>()
   const timerWorkerRef = useRef<Worker>()
   const inputRef = useRef<any>(null)
-  const panel = useRef<any>(null)
+
   const headerRef = useRef<any>(null)
-  const anchorRef = useRef<HTMLDivElement>(null)
+  const fileMenuRef = useRef<HTMLDivElement>(null)
+  const editMenuRef = useRef<HTMLDivElement>(null)
   const { openModal, closeModal } = useModal()
 
   const [open, setOpen] = useState(false)
-  const focusOut = (e: any) => {
-    if (panel.current === null) return
-    if (!panel.current.contains(e.target)) setOpen(false)
-  }
-  useEffect(() => {
-    window.addEventListener('click', focusOut)
-    return () => window.removeEventListener('click', focusOut)
-  }, [])
+  const [editMenuOpen, setEditMenuOpen] = useState(false)
 
   const [isSynced, setIsSynced] = useState(false)
   const [addText, setAddText] = useState(false)
@@ -456,6 +450,9 @@ const WorkSpace = () => {
       const targetBoxWidth = targetBox.width
       const scale = targetBoxWidth / layer.originalWidth
       const imageScale = layer.originalWidth / targetBoxWidth
+      console.log(scale, imageScale)
+      const defaultWidth = targetBoxWidth > layer.originalWidth ? 400 : 200
+      const defaultHeight = targetBoxWidth > layer.originalWidth ? 300 : 150
 
       setScriptGroup(layer.group)
 
@@ -468,8 +465,8 @@ const WorkSpace = () => {
               text: value.name,
               left: value.left * scale,
               top: value.top * scale,
-              width: 200 * imageScale,
-              height: 150 * imageScale,
+              width: defaultWidth * imageScale,
+              height: defaultHeight * imageScale,
               // width: value.width * scale,
               // height:
               //   value.height * (scale / 1.1) > 500
@@ -545,7 +542,9 @@ const WorkSpace = () => {
               // sourceEl.appendChild(canvas)
             }
           })
+        } else if (fileExtension && fileExtension === 'pdf') {
         }
+
         if (targetEl.firstChild && sourceEl.firstChild) {
           targetEl.removeChild(targetEl.firstChild as Node)
           sourceEl.removeChild(sourceEl.firstChild as Node)
@@ -683,19 +682,33 @@ const WorkSpace = () => {
   //     clearInterval(timer)
   //   }
   // }, [fileReading, textBoxReading, writeFile])
-  const handleToggle = () => {
-    setOpen(prevOpen => !prevOpen)
+
+  const handleToggle = (menu: string) => {
+    if (menu === 'file') {
+      setOpen(prevOpen => !prevOpen)
+    } else if (menu === 'edit') {
+      setEditMenuOpen(prevOpen => !prevOpen)
+    }
   }
 
-  const handleClose = (event: Event | React.SyntheticEvent) => {
-    if (
-      anchorRef.current &&
-      anchorRef.current.contains(event.target as HTMLElement)
-    ) {
-      return
+  const handleClose = (event: Event | React.SyntheticEvent, menu: string) => {
+    if (menu === 'file') {
+      if (
+        fileMenuRef.current &&
+        fileMenuRef.current.contains(event.target as HTMLElement)
+      ) {
+        return
+      }
+      setOpen(false)
+    } else if (menu === 'edit') {
+      if (
+        editMenuRef.current &&
+        editMenuRef.current.contains(event.target as HTMLElement)
+      ) {
+        return
+      }
+      setEditMenuOpen(false)
     }
-
-    setOpen(false)
   }
 
   function handleListKeyDown(event: React.KeyboardEvent) {
@@ -706,16 +719,6 @@ const WorkSpace = () => {
       setOpen(false)
     }
   }
-
-  // return focus to the button when we transitioned from !open -> open
-  const prevOpen = useRef(open)
-  useEffect(() => {
-    if (prevOpen.current === true && open === false) {
-      anchorRef.current!.focus()
-    }
-
-    prevOpen.current = open
-  }, [open])
 
   const handleOpen = () => {
     inputRef.current?.click()
@@ -796,70 +799,90 @@ const WorkSpace = () => {
       >
         <Header ref={headerRef}>
           <Box
-            ref={anchorRef}
-            id='composition-button'
-            aria-controls={open ? 'composition-menu' : undefined}
-            aria-expanded={open ? 'true' : undefined}
-            aria-haspopup='true'
-            onClick={handleToggle}
             sx={{
               display: 'flex',
+              gap: '8px',
+              alignItems: 'center',
+              paddingLeft: '10px',
               flex: 1,
-              margin: '4px',
-              padding: '2px 5px 3px 5px',
-              paddingLeft: '6px',
-              paddingRight: '6px',
-              cursor: 'default',
-              color: '#ffffff',
-
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                borderRadius: '3px',
-              },
             }}
           >
-            File
-          </Box>
-          {image ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flex: 1,
-                alignItems: 'center',
-                gap: '10px',
-              }}
-            >
-              <Tooltip title='Sync scroll'>
-                <IconButton
-                  onClick={() => setIsSynced(!isSynced)}
-                  sx={{ padding: 0 }}
-                  disabled={!image}
-                >
-                  <Icon
-                    icon='fluent:phone-vertical-scroll-24-filled'
-                    fontSize='1.5rem'
-                    color={isSynced ? '#66FF66' : 'white'}
-                  />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title='Add Textbox'>
-                <IconButton
-                  onClick={() => setAddText(!addText)}
-                  sx={{ padding: 0 }}
-                  disabled={!image}
-                >
-                  <Icon
-                    icon='cil:speech'
-                    fontSize='1.3rem'
-                    color={addText ? '#66FF66' : 'white'}
-                  />
-                </IconButton>
-              </Tooltip>
+            <Box sx={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {' '}
+              <IconButton
+                onClick={() => {
+                  window.location.reload()
+                }}
+              >
+                <NextImage
+                  src='/logo.svg'
+                  width={24}
+                  height={24}
+                  alt='logo'
+                  color='white'
+                />
+              </IconButton>
+              <Typography color='white' fontWeight={700}>
+                Glotoon
+              </Typography>
+              <Box
+                ref={fileMenuRef}
+                id='composition-button'
+                aria-controls={open ? 'composition-menu' : undefined}
+                aria-expanded={open ? 'true' : undefined}
+                aria-haspopup='true'
+                onClick={() => handleToggle('file')}
+                sx={{
+                  display: 'flex',
+                  flex: 1,
+                  margin: '4px',
+                  // padding: '2px 5px 3px 5px',
+                  paddingLeft: '10px',
+                  paddingRight: '6px',
+                  cursor: 'default',
+                  color: '#ffffff',
+                  fontWeight: 400,
+
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    borderRadius: '3px',
+                  },
+                }}
+              >
+                File
+              </Box>
+              <Box
+                ref={editMenuRef}
+                id='composition-button'
+                aria-controls={editMenuOpen ? 'composition-menu' : undefined}
+                aria-expanded={editMenuOpen ? 'true' : undefined}
+                aria-haspopup='true'
+                onClick={() => handleToggle('edit')}
+                sx={{
+                  display: 'flex',
+                  flex: 1,
+                  margin: '4px',
+                  // padding: '2px 5px 3px 5px',
+                  paddingLeft: '10px',
+                  paddingRight: '6px',
+                  cursor: 'default',
+                  color: '#ffffff',
+                  fontWeight: 400,
+
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    borderRadius: '3px',
+                  },
+                }}
+              >
+                Edit
+              </Box>
             </Box>
-          ) : null}
+          </Box>
+
           <Popper
             open={open}
-            anchorEl={anchorRef.current}
+            anchorEl={fileMenuRef.current}
             role={undefined}
             placement='bottom-start'
             transition
@@ -874,35 +897,146 @@ const WorkSpace = () => {
                 }}
               >
                 <Paper>
-                  <ClickAwayListener onClickAway={handleClose}>
+                  <ClickAwayListener
+                    onClickAway={event => handleClose(event, 'file')}
+                  >
                     <MenuList
-                      autoFocusItem={open}
+                      // autoFocusItem={open}
                       id='composition-menu'
                       aria-labelledby='composition-button'
                       onKeyDown={handleListKeyDown}
-                      sx={{ backgroundColor: hexToRGBA('#666666', 0.9) }}
+                      sx={{
+                        backgroundColor: hexToRGBA('#666666', 0.9),
+                        mt: 0.5,
+                        paddingBottom: 0,
+                        paddingTop: 0,
+                      }}
                     >
                       <MenuItem
                         onClick={event => {
-                          handleClose(event)
+                          handleClose(event, 'file')
                           handleOpen()
                         }}
                         sx={{
-                          backgroundColor: hexToRGBA('#666666', 0.9),
+                          // backgroundColor: hexToRGBA('#666666', 0.9),
+                          width: '200px',
                           color: '#f0f0f0',
                           borderRadius: '4px',
                           marginLeft: '2px',
                         }}
                       >
-                        Open
+                        New File...
                       </MenuItem>
                       <MenuItem
                         onClick={event => {
-                          handleClose(event)
+                          handleClose(event, 'file')
                           onClickExport()
                         }}
+                        disabled={!image}
+                        sx={{
+                          width: '200px',
+                          color: '#f0f0f0',
+                          borderRadius: '4px',
+                          marginLeft: '2px',
+                        }}
                       >
-                        Export
+                        Export as
+                      </MenuItem>
+                      {/* <MenuItem onClick={handleClose}>Logout</MenuItem> */}
+                    </MenuList>
+                  </ClickAwayListener>
+                </Paper>
+              </Grow>
+            )}
+          </Popper>
+          <Popper
+            open={editMenuOpen}
+            anchorEl={editMenuRef.current}
+            role={undefined}
+            placement='bottom-start'
+            transition
+            disablePortal
+          >
+            {({ TransitionProps, placement }) => (
+              <Grow
+                {...TransitionProps}
+                style={{
+                  transformOrigin:
+                    placement === 'bottom-start' ? 'left top' : 'left bottom',
+                }}
+              >
+                <Paper>
+                  <ClickAwayListener
+                    onClickAway={event => handleClose(event, 'edit')}
+                  >
+                    <MenuList
+                      // autoFocusItem={open}
+                      id='composition-menu'
+                      aria-labelledby='composition-button'
+                      onKeyDown={handleListKeyDown}
+                      sx={{
+                        backgroundColor: hexToRGBA('#666666', 0.9),
+                        mt: 0.5,
+                        paddingBottom: 0,
+                        paddingTop: 0,
+                      }}
+                    >
+                      <MenuItem
+                        onClick={event => {
+                          // handleClose(event, 'edit')
+                          setAddText(!addText)
+                        }}
+                        sx={{
+                          // backgroundColor: hexToRGBA('#666666', 0.9),
+                          width: '200px',
+                          color: '#f0f0f0',
+                          borderRadius: '4px',
+                          marginLeft: '2px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                        disabled={!image}
+                      >
+                        Add text box
+                        {addText ? (
+                          <NextImage
+                            src='/green-dot.svg'
+                            alt='dot'
+                            width='15'
+                            height='15'
+                          />
+                        ) : (
+                          ''
+                        )}
+                      </MenuItem>
+                      <MenuItem
+                        onClick={event => {
+                          // handleClose(event, 'edit')
+                          setIsSynced(!isSynced)
+                        }}
+                        disabled={!image}
+                        sx={{
+                          width: '200px',
+                          color: '#f0f0f0',
+                          borderRadius: '4px',
+                          marginLeft: '2px',
+                          display: 'flex',
+                          justifyContent: 'space-between ',
+                        }}
+                      >
+                        <Typography>Sync scroll</Typography>
+                        <Box>
+                          {isSynced ? (
+                            <NextImage
+                              src='/green-dot.svg'
+                              alt='dot'
+                              width='15'
+                              height='15'
+                            />
+                          ) : (
+                            ''
+                          )}
+                        </Box>
                       </MenuItem>
                       {/* <MenuItem onClick={handleClose}>Logout</MenuItem> */}
                     </MenuList>
@@ -962,6 +1096,59 @@ const WorkSpace = () => {
             <input {...getInputProps()} ref={inputRef} />
             <Button>File upload</Button>
           </Box>
+
+          {image ? (
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <Tooltip title='Sync scroll'>
+                  <IconButton
+                    onClick={() => setIsSynced(!isSynced)}
+                    sx={{ padding: 0 }}
+                    disabled={!image}
+                  >
+                    <Icon
+                      icon='fluent:phone-vertical-scroll-24-filled'
+                      fontSize='1.5rem'
+                      color={isSynced ? '#66FF66' : 'white'}
+                    />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title='Add Textbox'>
+                  <IconButton
+                    onClick={() => setAddText(!addText)}
+                    sx={{ padding: 0 }}
+                    disabled={!image}
+                  >
+                    <Icon
+                      icon='cil:speech'
+                      fontSize='1.3rem'
+                      color={addText ? '#66FF66' : 'white'}
+                    />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginRight: '10px',
+                }}
+              >
+                <Typography color='white' fontWeight={500}>
+                  {file?.name ?? ''}
+                </Typography>
+              </Box>
+            </Box>
+          ) : null}
         </Header>
 
         <Box
