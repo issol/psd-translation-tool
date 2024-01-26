@@ -522,9 +522,9 @@ const WorkSpace = () => {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg'],
+      // 'image/*': ['.png', '.jpg', '.jpeg'],
       'image/vnd.adobe.photoshop': ['.psd', '.psb'],
-      'application/pdf': ['.pdf'],
+      // 'application/pdf': ['.pdf'],
     },
     onDrop: async (acceptedFiles: File[]) => {
       const fileExtension = acceptedFiles[0].name.split('.').pop() ?? null
