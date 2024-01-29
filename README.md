@@ -1,6 +1,7 @@
 # PSD-tranlsation-tool
 
 This project, named "PSD-tranlsation-tool", is a web application built with Next.js, and TypeScript. It utilizes web workers to perform heavy computations in the background, without blocking the main thread. Upload files in PSD, PSB, JPG, and PNG formats, place the speech bubbles where you want to translate them, and export the grouped speech bubbles along with the original file when you're done.
+You can try it, [Live demo](https://psd-translation-tool-fhet3jcq4-issol.vercel.app/)
 
 ## Features
 
