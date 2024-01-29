@@ -858,9 +858,9 @@ const WorkSpace = () => {
                   color='white'
                 />
               </IconButton>
-              <Typography color='white' fontWeight={700}>
+{/*               <Typography color='white' fontWeight={700}>
                 Glotoon
-              </Typography>
+              </Typography> */}
               <Box
                 ref={fileMenuRef}
                 id='composition-button'
