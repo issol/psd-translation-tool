@@ -15,6 +15,7 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.5",
     "@mui/material": "^5.15.5",
+    "@vercel/analytics": "^1.1.2",
     "@webtoon/psd": "^0.4.0",
     "ag-psd": "^19.0.1",
     "file-saver": "^2.0.5",

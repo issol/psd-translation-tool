@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { RecoilRoot } from 'recoil'
 import RecoilContextProvider from './recoilRootProvider'
+import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,7 +21,7 @@ export default function RootLayout({
     <html lang='en'>
       <body className={inter.className}>
         <RecoilContextProvider>
-          {children} <div id='modal' />
+          {children} <div id='modal' /> <Analytics />
         </RecoilContextProvider>
       </body>
       {/* <body style={{ border: '1px solid' }}>{children}</body> */}
