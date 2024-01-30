@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# PSD-tranlsation-tool
+
+This project, named "PSD-tranlsation-tool", is a web application built with Next.js, and TypeScript. It utilizes web workers to perform heavy computations in the background, without blocking the main thread. Upload files in PSD, PSB, JPG, and PNG formats, place the speech bubbles where you want to translate them, and export the grouped speech bubbles along with the original file when you're done.
+You can try it, [Live demo](https://psd-translation-tool-fhet3jcq4-issol.vercel.app/)
+
+## Features
+
+- File Upload: Users can upload `.psd`, `.psb`, `.png`, `.jpg`, `.jpeg` files. The application reads these files as `ArrayBuffer` and performs different operations based on the file type.
+- Web Workers: The application uses web workers to parse data from `.psd` and `.psb` files and to perform operations on image layers. This allows these heavy computations to be performed in the background, without blocking the main thread.
+- Image and PSD, PSB Rendering: The application can render `.png`, `.jpg`, `.jpeg` files in the browser. For image files, it converts them to canvas elements and appends them to the DOM.
+
+## Libraries Used
+
+- Next.js: A React framework for building JavaScript applications.
+- React: A JavaScript library for building user interfaces.
+- TypeScript: A typed superset of JavaScript that compiles to plain JavaScript.
+- @emotion/react and @emotion/styled: Libraries for writing CSS styles with JavaScript.
+- @mui/icons-material and @mui/material: Material-UI libraries for using Material Design icons and components.
+- @webtoon/psd and ag-psd: Libraries for parsing PSD files.
+- react-dropzone: A React library for creating HTML5-compliant drag'n'drop file zones.
+- recoil: A state management library for React.
+- ag-psd : Libraries for reading and writing files in PSD and PSB formats.
 
 ## Getting Started
 
-First, run the development server:
+To get started with this project, clone the repository and install the dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+git clone <repository-url>
+cd <repository-directory>
+npm install
