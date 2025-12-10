@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import {
   Box,
@@ -17,25 +17,25 @@ import {
   Switch,
   Tooltip,
   Typography,
-} from '@mui/material'
-import { useDropzone } from 'react-dropzone'
-import { useEffect, useRef, useState, MouseEvent, Fragment } from 'react'
+} from "@mui/material"
+import { useDropzone } from "react-dropzone"
+import { useEffect, useRef, useState, MouseEvent, Fragment } from "react"
 
-import { BoxType, createMessage, validateMessage } from '@/app/messaging'
-import { Psd as AgPsd, Layer as AgLayer, writePsd, readPsd } from 'ag-psd'
+import { BoxType, createMessage, validateMessage } from "@/app/messaging"
+import { Psd as AgPsd, Layer as AgLayer, writePsd, readPsd } from "ag-psd"
 
-import Balloon from '@/app/components/Balloon'
+import Balloon from "@/app/components/Balloon"
 
-import useModal from '@/app/hooks/useModal'
-import Modal from '@/app/components/modal/custom-modal'
-import { atom, useRecoilState } from 'recoil'
-import ClearIcon from '@mui/icons-material/Clear'
-import ErrorModal from '../components/modal/error-modal'
-import { hexToRGBA } from '../utils/hexToRGBA'
-import styled from '@emotion/styled'
-import NextImage from 'next/image'
-import { Icon } from '@iconify/react'
-import { pdfjs, Document, Page } from 'react-pdf'
+import useModal from "@/app/hooks/useModal"
+import Modal from "@/app/components/modal/custom-modal"
+import { atom, useRecoilState } from "recoil"
+import ClearIcon from "@mui/icons-material/Clear"
+import ErrorModal from "../components/modal/error-modal"
+import { hexToRGBA } from "../utils/hexToRGBA"
+import styled from "@emotion/styled"
+import NextImage from "next/image"
+import { Icon } from "@iconify/react"
+import { pdfjs, Document, Page } from "react-pdf"
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
 
@@ -49,7 +49,7 @@ export interface BalloonType {
 }
 
 const DefaultGroup: AgLayer = {
-  blendMode: 'normal',
+  blendMode: "normal",
   children: [],
   bottom: 0,
   left: 0,
@@ -66,7 +66,7 @@ const DefaultGroup: AgLayer = {
   },
   sectionDivider: {
     type: 2,
-    key: 'norm',
+    key: "norm",
   },
   transparencyProtected: false,
   transparencyShapesLayer: true,
@@ -82,6 +82,7 @@ const WorkSpace = () => {
   const timerWorkerRef = useRef<Worker>()
   const layerWorkerRef = useRef<Worker>()
   const inputRef = useRef<any>(null)
+  const inputRefDirect = useRef<any>(null)
 
   const headerRef = useRef<any>(null)
   const fileMenuRef = useRef<HTMLDivElement>(null)
@@ -103,7 +104,7 @@ const WorkSpace = () => {
   const [resizing, setResizing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [scriptGroup, setScriptGroup] = useState<AgLayer | undefined | null>(
-    null,
+    null
   )
 
   const [loadingStatus, setLoadingStatus] = useRecoilState(loadingStatusState)
@@ -128,26 +129,26 @@ const WorkSpace = () => {
       idx: Math.random().toString(),
       left: e.clientX - rect.left,
       top: e.clientY - rect.top,
-      text: '',
+      text: "",
       width: 150,
       height: 100,
-      type: 'BALLOON',
+      type: "BALLOON",
     }
-    setBalloons(prevBalloons => [...prevBalloons, newBalloon])
+    setBalloons((prevBalloons) => [...prevBalloons, newBalloon])
   }
 
   const handleDelete = (id: string, event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
-    setBalloons(prevBalloons =>
-      prevBalloons.filter(balloon => balloon.idx !== id),
+    setBalloons((prevBalloons) =>
+      prevBalloons.filter((balloon) => balloon.idx !== id)
     )
   }
 
   const handleTextChange = (id: string, newText: string) => {
-    setBalloons(prevBalloons =>
-      prevBalloons.map(balloon =>
-        balloon.idx === id ? { ...balloon, text: newText } : balloon,
-      ),
+    setBalloons((prevBalloons) =>
+      prevBalloons.map((balloon) =>
+        balloon.idx === id ? { ...balloon, text: newText } : balloon
+      )
     )
   }
 
@@ -156,15 +157,19 @@ const WorkSpace = () => {
     width: number
     height: number
   }) => {
-    const canvasEl = document.createElement('canvas')
+    const canvasEl = document.createElement("canvas")
 
-    const context = canvasEl.getContext('2d') as CanvasRenderingContext2D
+    const context = canvasEl.getContext("2d") as CanvasRenderingContext2D
 
     const { width, height, pixelData: rgba } = data
-    let result: Uint8ClampedArray | Uint8Array =
-      rgba instanceof Uint8Array ? new Uint8ClampedArray(rgba.buffer) : rgba
+    let result: Uint8ClampedArray
+    if (rgba instanceof Uint8ClampedArray) {
+      result = rgba
+    } else {
+      result = new Uint8ClampedArray(rgba.buffer.slice(0))
+    }
 
-    const imageData = new ImageData(result, width, height)
+    const imageData = new ImageData(result as any, width, height)
 
     canvasEl.width = width
     canvasEl.height = height
@@ -176,19 +181,19 @@ const WorkSpace = () => {
   function replaceMatchingLayers(
     group: AgLayer,
     layerIncludeCanvas: AgLayer[],
-    isChild?: boolean,
+    isChild?: boolean
   ): [AgLayer, AgLayer[]] {
     if (group.children) {
       console.log(group)
 
-      group.children = group.children.map(child => {
+      group.children = group.children.map((child) => {
         const matchingLayer = layerIncludeCanvas.find(
-          layer => layer.name === child.name,
+          (layer) => layer.name === child.name
         )
         if (matchingLayer) {
           // Remove the matching layer from layerIncludeCanvas
           layerIncludeCanvas = layerIncludeCanvas.filter(
-            layer => layer.name !== matchingLayer.name,
+            (layer) => layer.name !== matchingLayer.name
           )
           // Replace the child with the matching layer
 
@@ -215,30 +220,199 @@ const WorkSpace = () => {
       const reader = new FileReader()
       reader.readAsArrayBuffer(file)
 
-      return new Promise<ArrayBuffer>(resolve => {
-        reader.addEventListener('load', event => {
+      return new Promise<ArrayBuffer>((resolve) => {
+        reader.addEventListener("load", (event) => {
           if (event.target) {
             resolve(event.target.result as ArrayBuffer)
           } else {
-            throw new Error('Loaded file but event.target is null')
+            throw new Error("Loaded file but event.target is null")
           }
         })
       })
     }
   }
 
+  // Worker 없이 직접 파일 처리하는 함수들
+  const parseFileDirect = async (buffer: ArrayBuffer) => {
+    try {
+      setIsLoading(true)
+      console.time("Parse PSD file (Direct)")
+
+      const agPsd = readPsd(buffer, {
+        skipThumbnail: true,
+      })
+
+      console.log(agPsd)
+
+      if (agPsd.canvas) {
+        const context = (agPsd.canvas as HTMLCanvasElement)?.getContext("2d")
+
+        if (context) {
+          const imageData = context.getImageData(
+            0,
+            0,
+            agPsd.canvas.width,
+            agPsd.canvas.height
+          )
+          const pixelData = imageData.data
+
+          const imageDataObj = {
+            pixelData,
+            width: agPsd.width,
+            height: agPsd.height,
+          }
+
+          setImage(imageDataObj)
+
+          const targetEl = document.querySelector("#target") as HTMLDivElement
+          const sourceEl = document.querySelector("#source") as HTMLDivElement
+
+          if (targetEl && sourceEl) {
+            if (targetEl.firstChild) {
+              targetEl.removeChild(targetEl.firstChild as Node)
+            }
+            if (sourceEl.firstChild) {
+              sourceEl.removeChild(sourceEl.firstChild as Node)
+            }
+
+            targetEl.appendChild(generateCanvas(imageDataObj))
+            sourceEl.appendChild(generateCanvas(imageDataObj))
+          }
+
+          setIsLoading(false)
+          console.timeEnd("Parse PSD file (Direct)")
+        }
+      }
+    } catch (error: any) {
+      setIsLoading(false)
+      console.error(error)
+      openModal({
+        type: "ErrorModal",
+        children: (
+          <ErrorModal
+            onClose={() => closeModal("ErrorModal")}
+            value={error.message}
+          />
+        ),
+      })
+    }
+  }
+
+  const parseLayerDirect = async (buffer: ArrayBuffer) => {
+    try {
+      const imageAgPsd = readPsd(buffer, {
+        useImageData: true,
+        skipThumbnail: true,
+      })
+
+      let originalGroup: AgLayer | undefined = imageAgPsd.children?.find(
+        (value) => value.name == "대사"
+      )
+
+      let box =
+        originalGroup?.children?.map((value) => ({
+          top: value.top!,
+          left: value.left!,
+          name: value.name ?? "",
+        })) ?? []
+
+      const targetBox = boundaryRef.current?.getBoundingClientRect()
+      if (!targetBox) {
+        throw new Error("Target box not found")
+      }
+
+      const targetBoxWidth = targetBox.width
+      const scale = targetBoxWidth / imageAgPsd.width
+      const imageScale = imageAgPsd.width / targetBoxWidth
+      console.log(scale, imageScale)
+      const defaultWidth = targetBoxWidth > imageAgPsd.width ? 400 : 200
+      const defaultHeight = targetBoxWidth > imageAgPsd.width ? 300 : 150
+
+      setScriptGroup(originalGroup)
+
+      box.map((value: BoxType) => {
+        setBalloons((prevState) => {
+          return [
+            ...prevState,
+            {
+              idx: Math.random().toString(),
+              text: value.name,
+              left: value.left * scale,
+              top: value.top * scale,
+              width: defaultWidth + defaultWidth * scale,
+              height: defaultHeight + defaultHeight * scale,
+            },
+          ]
+        })
+      })
+    } catch (error: any) {
+      console.error(error)
+      openModal({
+        type: "ErrorModal",
+        children: (
+          <ErrorModal
+            onClose={() => closeModal("ErrorModal")}
+            value={error.message}
+          />
+        ),
+      })
+    }
+  }
+
+  const handleFileOpenDirect = async (acceptedFiles: File[]) => {
+    const fileExtension = acceptedFiles[0].name.split(".").pop() ?? null
+
+    if (fileExtension && (fileExtension === "psd" || fileExtension === "psb")) {
+      setFile(acceptedFiles[0])
+      setBalloons([])
+
+      const buffer = await readFileAsArrayBuffer(acceptedFiles[0])
+      const bufferCopy = buffer.slice(0)
+
+      await parseFileDirect(buffer)
+      await parseLayerDirect(bufferCopy)
+    } else if (
+      fileExtension &&
+      (fileExtension === "png" ||
+        fileExtension === "jpg" ||
+        fileExtension === "jpeg")
+    ) {
+      const targetEl = document.querySelector("#target") as HTMLDivElement
+      const sourceEl = document.querySelector("#source") as HTMLDivElement
+
+      setFile(acceptedFiles[0])
+
+      if (targetEl.firstChild) {
+        targetEl.removeChild(targetEl.firstChild as Node)
+      }
+      if (sourceEl.firstChild) {
+        sourceEl.removeChild(sourceEl.firstChild as Node)
+      }
+
+      ;[targetEl, sourceEl].map(async (value) => {
+        const canvas = await convertImageToCanvas(acceptedFiles[0])
+        if (canvas) {
+          value.appendChild(canvas)
+        }
+      })
+    } else if (fileExtension && fileExtension === "pdf") {
+      setFile(acceptedFiles[0])
+      setPdfFile(URL.createObjectURL(acceptedFiles[0]))
+    }
+  }
+
   const convertImageToCanvas = (
-    file: File,
+    file: File
   ): Promise<HTMLCanvasElement | null> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onload = event => {
+      reader.onload = (event) => {
         const img = new Image()
         img.onload = () => {
-          const canvas = document.createElement('canvas')
+          const canvas = document.createElement("canvas")
           canvas.width = img.width
           canvas.height = img.height
-          const ctx = canvas.getContext('2d')
+          const ctx = canvas.getContext("2d")
           if (ctx) {
             ctx.drawImage(img, 0, 0, img.width, img.height)
           }
@@ -252,36 +426,36 @@ const WorkSpace = () => {
   }
 
   const createCanvasWithText = (item: BalloonType, scale: number) => {
-    const canvas = document.createElement('canvas')
+    const canvas = document.createElement("canvas")
     canvas.width = item.width * scale + 15
     canvas.height = item.height * scale
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext("2d")
 
     if (ctx) {
-      ctx.fillStyle = 'white'
+      ctx.fillStyle = "white"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      ctx.strokeStyle = 'black'
+      ctx.strokeStyle = "black"
       ctx.lineWidth = 5
       ctx.strokeRect(0, 0, canvas.width, canvas.height)
 
-      ctx.font = '30px Arial'
-      ctx.fillStyle = 'black'
+      ctx.font = "30px Arial"
+      ctx.fillStyle = "black"
       const text = item.text
-      const words = text.split(' ')
+      const words = text.split(" ")
       const lineHeight = 30
-      let line = ''
+      let line = ""
       let y = 50
 
       for (let n = 0; n < words.length; n++) {
-        const testLine = line + words[n] + ' '
+        const testLine = line + words[n] + " "
         const metrics = ctx.measureText(testLine)
         const testWidth = metrics.width
 
         if (testWidth > canvas.width && n > 0) {
           ctx.fillText(line, 10, y)
-          line = words[n] + ' '
+          line = words[n] + " "
           y += lineHeight
         } else {
           line = testLine
@@ -304,7 +478,7 @@ const WorkSpace = () => {
     if (canvasPool.length > 0) {
       return canvasPool.pop() as HTMLCanvasElement
     } else {
-      return document.createElement('canvas')
+      return document.createElement("canvas")
     }
   }
 
@@ -317,11 +491,11 @@ const WorkSpace = () => {
 
     if (newNode.imageData) {
       const canvasEl = getCanvasFromPool()
-      const context = canvasEl.getContext('2d') as CanvasRenderingContext2D
+      const context = canvasEl.getContext("2d") as CanvasRenderingContext2D
       const imageData = new ImageData(
         new Uint8ClampedArray(newNode.imageData.data),
         newNode.imageData.width,
-        newNode.imageData.height,
+        newNode.imageData.height
       )
       canvasEl.width = newNode.imageData.width
       canvasEl.height = newNode.imageData.height
@@ -335,10 +509,10 @@ const WorkSpace = () => {
 
     if (newNode.children) {
       const childrenPromises = newNode.children.map(
-        child =>
-          new Promise<AgLayer>(resolve =>
-            requestAnimationFrame(() => resolve(addCanvasToChildren(child))),
-          ),
+        (child) =>
+          new Promise<AgLayer>((resolve) =>
+            requestAnimationFrame(() => resolve(addCanvasToChildren(child)))
+          )
       )
       newNode.children = await Promise.all(childrenPromises)
     }
@@ -348,10 +522,10 @@ const WorkSpace = () => {
 
   const handleCopyLayerStyle = async (
     filename: string,
-    fileExtension: string,
+    fileExtension: string
   ) => {
     if (file) {
-      readFileAsArrayBuffer(file).then(buffer => {
+      readFileAsArrayBuffer(file).then((buffer) => {
         if (
           workerRef.current &&
           image &&
@@ -359,24 +533,24 @@ const WorkSpace = () => {
           timerWorkerRef.current
         ) {
           const targetBox = boundaryRef.current?.getBoundingClientRect()
-          console.log(file.name.includes('.psb'))
+          console.log(file.name.includes(".psb"))
 
           const targetBoxWidth = targetBox.width
 
           timerWorkerRef.current.postMessage(
-            createMessage('ProgressAction', 'start'),
+            createMessage("ProgressAction", "start")
           )
           workerRef.current.postMessage(
-            createMessage('WriteFile', {
+            createMessage("WriteFile", {
               originalFile: image,
               box: balloons,
               // group: group,
               targetBoxWidth: targetBoxWidth,
               scriptGroup: scriptGroup,
               buffer: buffer,
-              isPsb: file.name.includes('.psb'),
+              isPsb: file.name.includes(".psb"),
               fileName: `${filename}.${fileExtension}`,
-            }),
+            })
           )
         }
       })
@@ -385,36 +559,36 @@ const WorkSpace = () => {
 
   const onClickExport = () => {
     if (
-      file?.name.split('.').pop() === 'psd' ||
-      file?.name.split('.').pop() === 'psb'
+      file?.name.split(".").pop() === "psd" ||
+      file?.name.split(".").pop() === "psb"
         ? !image
         : !pdfFile
     )
       return
-    const fileExtension = file?.name.split('.').pop() ?? ''
-    const fileName = file?.name.split('.').slice(0, -1).join('.') ?? ''
+    const fileExtension = file?.name.split(".").pop() ?? ""
+    const fileName = file?.name.split(".").slice(0, -1).join(".") ?? ""
 
     if (pdfFile) {
-      const a = boundaryRef.current?.querySelector('#target')
+      const a = boundaryRef.current?.querySelector("#target")
     }
 
     openModal({
-      type: 'SameLayerModal',
+      type: "SameLayerModal",
       children: (
         <Modal
           onClick={(filename: string, fileExtension: string) => {
-            closeModal('SameLayerModal')
+            closeModal("SameLayerModal")
 
             handleCopyLayerStyle(filename, fileExtension)
           }}
-          onClose={() => closeModal('SameLayerModal')}
-          rightButtonText='Export'
-          leftButtonText='Cancel'
-          title='Export file'
+          onClose={() => closeModal("SameLayerModal")}
+          rightButtonText="Export"
+          leftButtonText="Cancel"
+          title="Export file"
           // filename={`${fileName}-result.${fileExtension}` ?? 'result.psd'}
-          filename={`${fileName}-result` ?? `result`}
+          filename={fileName ? `${fileName}-result` : `result`}
           fileExtension={fileExtension}
-          subtitle='Do you want to export a file with a text layer?'
+          subtitle="Do you want to export a file with a text layer?"
         />
       ),
     })
@@ -423,7 +597,7 @@ const WorkSpace = () => {
 
   const workerCallback = (
     { data }: MessageEvent<any>,
-    element: HTMLDivElement[],
+    element: HTMLDivElement[]
   ) => {
     const { type, timestamp, value } = data
     validateMessage(data)
@@ -434,7 +608,7 @@ const WorkSpace = () => {
     //   type,
     // )
 
-    if (type === 'Layer') {
+    if (type === "Layer") {
       const layer = value
 
       // -- Layers --
@@ -446,23 +620,23 @@ const WorkSpace = () => {
       // console.time('Create and append <canvas> for layer')
       // element[2].appendChild(generateCanvas(layer))
       // console.timeEnd('Create and append <canvas> for layer')
-    } else if (type === 'Children') {
+    } else if (type === "Children") {
       const image = value as AgLayer
-    } else if (type === 'MainImageData') {
+    } else if (type === "MainImageData") {
       const image = value
 
       setImage(image)
 
-      element.map(value => {
+      element.map((value) => {
         value.appendChild(generateCanvas(image))
       })
 
       setIsLoading(false)
-    } else if (type === 'Group') {
+    } else if (type === "Group") {
       const layer = value
       const targetBox = boundaryRef.current?.getBoundingClientRect()
       if (!targetBox) {
-        throw new Error('Target box not found')
+        throw new Error("Target box not found")
       }
 
       const targetBoxWidth = targetBox.width
@@ -475,7 +649,7 @@ const WorkSpace = () => {
       setScriptGroup(layer.group)
 
       layer.box.map((value: BoxType) => {
-        setBalloons(prevState => {
+        setBalloons((prevState) => {
           return [
             ...prevState,
             {
@@ -494,26 +668,26 @@ const WorkSpace = () => {
           ]
         })
       })
-    } else if (type === 'DownloadFile' && timerWorkerRef.current) {
+    } else if (type === "DownloadFile" && timerWorkerRef.current) {
       timerWorkerRef.current.postMessage(
-        createMessage('ProgressAction', 'stop'),
+        createMessage("ProgressAction", "stop")
       )
-      const a = document.createElement('a')
+      const a = document.createElement("a")
       a.href = URL.createObjectURL(value.file)
 
-      a.download = value.fileName ?? 'result.psd'
+      a.download = value.fileName ?? "result.psd"
       document.body.appendChild(a)
 
       a.click()
       document.body.removeChild(a)
-    } else if (type === 'Error') {
+    } else if (type === "Error") {
       setIsLoading(false)
       setLoadingStatus(null)
       console.error(value)
       openModal({
-        type: 'ErrorModal',
+        type: "ErrorModal",
         children: (
-          <ErrorModal onClose={() => closeModal('ErrorModal')} value={value} />
+          <ErrorModal onClose={() => closeModal("ErrorModal")} value={value} />
         ),
       })
     }
@@ -523,48 +697,48 @@ const WorkSpace = () => {
     multiple: false,
     accept: {
       // 'image/*': ['.png', '.jpg', '.jpeg'],
-      'image/vnd.adobe.photoshop': ['.psd', '.psb'],
+      "image/vnd.adobe.photoshop": [".psd", ".psb"],
       // 'application/pdf': ['.pdf'],
     },
     onDrop: async (acceptedFiles: File[]) => {
-      const fileExtension = acceptedFiles[0].name.split('.').pop() ?? null
+      const fileExtension = acceptedFiles[0].name.split(".").pop() ?? null
       if (workerRef.current && layerWorkerRef.current) {
-        const targetEl = document.querySelector('#target') as HTMLDivElement
-        const sourceEl = document.querySelector('#source') as HTMLDivElement
+        const targetEl = document.querySelector("#target") as HTMLDivElement
+        const sourceEl = document.querySelector("#source") as HTMLDivElement
         setFile(acceptedFiles[0])
         if (
           fileExtension &&
-          (fileExtension === 'psd' || fileExtension === 'psb')
+          (fileExtension === "psd" || fileExtension === "psb")
         ) {
-          readFileAsArrayBuffer(acceptedFiles[0]).then(buffer => {
+          readFileAsArrayBuffer(acceptedFiles[0]).then((buffer) => {
             setIsLoading(true)
             const bufferCopy = buffer.slice(0)
             console.log(buffer)
 
-            workerRef.current?.postMessage(createMessage('ParseData', buffer), [
+            workerRef.current?.postMessage(createMessage("ParseData", buffer), [
               buffer,
             ])
             layerWorkerRef.current?.postMessage(
-              createMessage('ParseLayer', bufferCopy),
-              [bufferCopy],
+              createMessage("ParseLayer", bufferCopy),
+              [bufferCopy]
             )
           })
 
           setBalloons([])
         } else if (
           fileExtension &&
-          (fileExtension === 'png' ||
-            fileExtension === 'jpg' ||
-            fileExtension === 'jpeg')
+          (fileExtension === "png" ||
+            fileExtension === "jpg" ||
+            fileExtension === "jpeg")
         ) {
-          ;[targetEl, sourceEl].map(async value => {
+          ;[targetEl, sourceEl].map(async (value) => {
             const canvas = await convertImageToCanvas(acceptedFiles[0])
             if (canvas) {
               value.appendChild(canvas)
               // sourceEl.appendChild(canvas)
             }
           })
-        } else if (fileExtension && fileExtension === 'pdf') {
+        } else if (fileExtension && fileExtension === "pdf") {
           setPdfFile(URL.createObjectURL(acceptedFiles[0]))
         }
 
@@ -580,48 +754,48 @@ const WorkSpace = () => {
 
   useEffect(() => {
     workerRef.current = new Worker(
-      new URL('/src/app/worker.ts', import.meta.url),
+      new URL("/src/app/worker.ts", import.meta.url)
     )
     timerWorkerRef.current = new Worker(
-      new URL('/src/app/timer-worker.ts', import.meta.url),
+      new URL("/src/app/timer-worker.ts", import.meta.url)
     )
     layerWorkerRef.current = new Worker(
-      new URL('/src/app/layer-worker.ts', import.meta.url),
+      new URL("/src/app/layer-worker.ts", import.meta.url)
     )
 
-    const targetEl = document.querySelector('#target') as HTMLDivElement
-    const sourceEl = document.querySelector('#source') as HTMLDivElement
+    const targetEl = document.querySelector("#target") as HTMLDivElement
+    const sourceEl = document.querySelector("#source") as HTMLDivElement
     // const layerEl = document.querySelector('#layer') as HTMLDivElement
 
-    workerRef.current.addEventListener('message', (e: MessageEvent<any>) => {
+    workerRef.current.addEventListener("message", (e: MessageEvent<any>) => {
       workerCallback(e, [targetEl, sourceEl])
       // workerCallback(e, sourceEl)
     })
 
     layerWorkerRef.current.addEventListener(
-      'message',
+      "message",
       (e: MessageEvent<any>) => {
         workerCallback(e, [targetEl, sourceEl])
         // workerCallback(e, sourceEl)
-      },
+      }
     )
 
     timerWorkerRef.current.addEventListener(
-      'message',
+      "message",
       (e: MessageEvent<any>) => {
         const { type, timestamp, value } = e.data
         validateMessage(e.data)
 
-        if (type === 'Progress') {
+        if (type === "Progress") {
           setLoadingStatus(value)
         }
-      },
+      }
     )
   }, [])
 
   useEffect(() => {
-    const source = document.getElementById('source')
-    const target = document.getElementById('target')
+    const source = document.getElementById("source")
+    const target = document.getElementById("target")
 
     if (source && target) {
       const syncScroll = (e: any) => {
@@ -631,12 +805,12 @@ const WorkSpace = () => {
         }
       }
 
-      source.addEventListener('scroll', syncScroll)
-      target.addEventListener('scroll', syncScroll)
+      source.addEventListener("scroll", syncScroll)
+      target.addEventListener("scroll", syncScroll)
 
       return () => {
-        source.removeEventListener('scroll', syncScroll)
-        target.removeEventListener('scroll', syncScroll)
+        source.removeEventListener("scroll", syncScroll)
+        target.removeEventListener("scroll", syncScroll)
       }
     }
   }, [isSynced])
@@ -649,10 +823,10 @@ const WorkSpace = () => {
     }
 
     // Bind the event listener
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside)
     return () => {
       // Unbind the event listener on clean up
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
 
@@ -720,15 +894,15 @@ const WorkSpace = () => {
   // }, [fileReading, textBoxReading, writeFile])
 
   const handleToggle = (menu: string) => {
-    if (menu === 'file') {
-      setOpen(prevOpen => !prevOpen)
-    } else if (menu === 'edit') {
-      setEditMenuOpen(prevOpen => !prevOpen)
+    if (menu === "file") {
+      setOpen((prevOpen) => !prevOpen)
+    } else if (menu === "edit") {
+      setEditMenuOpen((prevOpen) => !prevOpen)
     }
   }
 
   const handleClose = (event: Event | React.SyntheticEvent, menu: string) => {
-    if (menu === 'file') {
+    if (menu === "file") {
       if (
         fileMenuRef.current &&
         fileMenuRef.current.contains(event.target as HTMLElement)
@@ -736,7 +910,7 @@ const WorkSpace = () => {
         return
       }
       setOpen(false)
-    } else if (menu === 'edit') {
+    } else if (menu === "edit") {
       if (
         editMenuRef.current &&
         editMenuRef.current.contains(event.target as HTMLElement)
@@ -748,10 +922,10 @@ const WorkSpace = () => {
   }
 
   function handleListKeyDown(event: React.KeyboardEvent) {
-    if (event.key === 'Tab') {
+    if (event.key === "Tab") {
       event.preventDefault()
       setOpen(false)
-    } else if (event.key === 'Escape') {
+    } else if (event.key === "Escape") {
       setOpen(false)
     }
   }
@@ -760,43 +934,47 @@ const WorkSpace = () => {
     inputRef.current?.click()
   }
 
+  const handleOpenDirect = () => {
+    inputRefDirect.current?.click()
+  }
+
   return (
     // <main className={styles.main}>
     <>
       {loadingStatus && (
         <Box
           sx={{
-            position: 'fixed',
+            position: "fixed",
             zIndex: 9999,
             left: 0,
             top: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '24px',
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "24px",
           }}
         >
           <Box
             sx={{
-              width: '300px',
-              backgroundColor: 'rgba(255,255,255,0.01)',
+              width: "300px",
+              backgroundColor: "rgba(255,255,255,0.01)",
 
-              borderRadius: '10px', // 테두리를 둥글게 설정
+              borderRadius: "10px", // 테두리를 둥글게 설정
               boxShadow: 3, // 그림자 효과를 추가
               p: 2, // 패딩을 추가
             }}
           >
-            <LinearProgress color='secondary' />
+            <LinearProgress color="secondary" />
             <Typography
-              color='#ffffff'
+              color="#ffffff"
               fontSize={16}
               fontWeight={500}
-              lineHeight='20px'
-              padding='10px'
-              mt='10px'
+              lineHeight="20px"
+              padding="10px"
+              mt="10px"
             >
               {loadingStatus}
             </Typography>
@@ -807,16 +985,16 @@ const WorkSpace = () => {
       {isLoading && (
         <Box
           sx={{
-            position: 'fixed',
+            position: "fixed",
             zIndex: 9999,
             left: 0,
             top: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
           <CircularProgress disableShrink sx={{ mt: 6 }} />
@@ -825,63 +1003,63 @@ const WorkSpace = () => {
 
       <Box
         sx={{
-          display: 'flex',
+          display: "flex",
           // position: 'relative',
           // gap: 4,
           // paddingTop: '75px',
-          width: '100%',
-          flexDirection: 'column',
+          width: "100%",
+          flexDirection: "column",
         }}
       >
         <Header ref={headerRef}>
           <Box
             sx={{
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'center',
-              paddingLeft: '10px',
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              paddingLeft: "10px",
               flex: 1,
             }}
           >
-            <Box sx={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {' '}
+            <Box sx={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              {" "}
               <IconButton
                 onClick={() => {
                   window.location.reload()
                 }}
               >
                 <NextImage
-                  src='/logo.svg'
+                  src="/logo.svg"
                   width={24}
                   height={24}
-                  alt='logo'
-                  color='white'
+                  alt="logo"
+                  color="white"
                 />
               </IconButton>
-{/*               <Typography color='white' fontWeight={700}>
+              {/*               <Typography color='white' fontWeight={700}>
                 Glotoon
               </Typography> */}
               <Box
                 ref={fileMenuRef}
-                id='composition-button'
-                aria-controls={open ? 'composition-menu' : undefined}
-                aria-expanded={open ? 'true' : undefined}
-                aria-haspopup='true'
-                onClick={() => handleToggle('file')}
+                id="composition-button"
+                aria-controls={open ? "composition-menu" : undefined}
+                aria-expanded={open ? "true" : undefined}
+                aria-haspopup="true"
+                onClick={() => handleToggle("file")}
                 sx={{
-                  display: 'flex',
+                  display: "flex",
                   flex: 1,
-                  margin: '4px',
+                  margin: "4px",
                   // padding: '2px 5px 3px 5px',
-                  paddingLeft: '10px',
-                  paddingRight: '6px',
-                  cursor: 'default',
-                  color: '#ffffff',
+                  paddingLeft: "10px",
+                  paddingRight: "6px",
+                  cursor: "default",
+                  color: "#ffffff",
                   fontWeight: 400,
 
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    borderRadius: '3px',
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.25)",
+                    borderRadius: "3px",
                   },
                 }}
               >
@@ -889,25 +1067,25 @@ const WorkSpace = () => {
               </Box>
               <Box
                 ref={editMenuRef}
-                id='composition-button'
-                aria-controls={editMenuOpen ? 'composition-menu' : undefined}
-                aria-expanded={editMenuOpen ? 'true' : undefined}
-                aria-haspopup='true'
-                onClick={() => handleToggle('edit')}
+                id="composition-button"
+                aria-controls={editMenuOpen ? "composition-menu" : undefined}
+                aria-expanded={editMenuOpen ? "true" : undefined}
+                aria-haspopup="true"
+                onClick={() => handleToggle("edit")}
                 sx={{
-                  display: 'flex',
+                  display: "flex",
                   flex: 1,
-                  margin: '4px',
+                  margin: "4px",
                   // padding: '2px 5px 3px 5px',
-                  paddingLeft: '10px',
-                  paddingRight: '6px',
-                  cursor: 'default',
-                  color: '#ffffff',
+                  paddingLeft: "10px",
+                  paddingRight: "6px",
+                  cursor: "default",
+                  color: "#ffffff",
                   fontWeight: 400,
 
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    borderRadius: '3px',
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.25)",
+                    borderRadius: "3px",
                   },
                 }}
               >
@@ -920,7 +1098,7 @@ const WorkSpace = () => {
             open={open}
             anchorEl={fileMenuRef.current}
             role={undefined}
-            placement='bottom-start'
+            placement="bottom-start"
             transition
             disablePortal
             sx={{ zIndex: 1000 }}
@@ -930,56 +1108,71 @@ const WorkSpace = () => {
                 {...TransitionProps}
                 style={{
                   transformOrigin:
-                    placement === 'bottom-start' ? 'left top' : 'left bottom',
+                    placement === "bottom-start" ? "left top" : "left bottom",
                 }}
               >
                 <Paper>
                   <ClickAwayListener
-                    onClickAway={event => handleClose(event, 'file')}
+                    onClickAway={(event) => handleClose(event, "file")}
                   >
                     <MenuList
                       // autoFocusItem={open}
-                      id='composition-menu'
-                      aria-labelledby='composition-button'
+                      id="composition-menu"
+                      aria-labelledby="composition-button"
                       onKeyDown={handleListKeyDown}
                       sx={{
-                        backgroundColor: hexToRGBA('#666666', 0.9),
+                        backgroundColor: hexToRGBA("#666666", 0.9),
                         mt: 0.5,
                         paddingBottom: 0,
                         paddingTop: 0,
                       }}
                     >
                       <MenuItem
-                        onClick={event => {
-                          handleClose(event, 'file')
+                        onClick={(event) => {
+                          handleClose(event, "file")
                           handleOpen()
                         }}
                         sx={{
                           // backgroundColor: hexToRGBA('#666666', 0.9),
-                          width: '200px',
-                          color: '#f0f0f0',
-                          borderRadius: '4px',
-                          marginLeft: '2px',
+                          width: "200px",
+                          color: "#f0f0f0",
+                          borderRadius: "4px",
+                          marginLeft: "2px",
                         }}
                       >
-                        New File...
+                        New File... (Worker)
                       </MenuItem>
                       <MenuItem
-                        onClick={event => {
-                          handleClose(event, 'file')
+                        onClick={(event) => {
+                          handleClose(event, "file")
+                          handleOpenDirect()
+                        }}
+                        sx={{
+                          // backgroundColor: hexToRGBA('#666666', 0.9),
+                          width: "200px",
+                          color: "#f0f0f0",
+                          borderRadius: "4px",
+                          marginLeft: "2px",
+                        }}
+                      >
+                        New File... (Direct)
+                      </MenuItem>
+                      <MenuItem
+                        onClick={(event) => {
+                          handleClose(event, "file")
                           onClickExport()
                         }}
                         disabled={
-                          file?.name.split('.').pop() === 'psd' ||
-                          file?.name.split('.').pop() === 'psb'
+                          file?.name.split(".").pop() === "psd" ||
+                          file?.name.split(".").pop() === "psb"
                             ? !image
                             : !pdfFile
                         }
                         sx={{
-                          width: '200px',
-                          color: '#f0f0f0',
-                          borderRadius: '4px',
-                          marginLeft: '2px',
+                          width: "200px",
+                          color: "#f0f0f0",
+                          borderRadius: "4px",
+                          marginLeft: "2px",
                         }}
                       >
                         Export as
@@ -995,7 +1188,7 @@ const WorkSpace = () => {
             open={editMenuOpen}
             anchorEl={editMenuRef.current}
             role={undefined}
-            placement='bottom-start'
+            placement="bottom-start"
             transition
             disablePortal
             sx={{ zIndex: 1000 }}
@@ -1005,79 +1198,79 @@ const WorkSpace = () => {
                 {...TransitionProps}
                 style={{
                   transformOrigin:
-                    placement === 'bottom-start' ? 'left top' : 'left bottom',
+                    placement === "bottom-start" ? "left top" : "left bottom",
                 }}
               >
                 <Paper>
                   <ClickAwayListener
-                    onClickAway={event => handleClose(event, 'edit')}
+                    onClickAway={(event) => handleClose(event, "edit")}
                   >
                     <MenuList
                       // autoFocusItem={open}
-                      id='composition-menu'
-                      aria-labelledby='composition-button'
+                      id="composition-menu"
+                      aria-labelledby="composition-button"
                       onKeyDown={handleListKeyDown}
                       sx={{
-                        backgroundColor: hexToRGBA('#666666', 0.9),
+                        backgroundColor: hexToRGBA("#666666", 0.9),
                         mt: 0.5,
                         paddingBottom: 0,
                         paddingTop: 0,
                       }}
                     >
                       <MenuItem
-                        onClick={event => {
+                        onClick={(event) => {
                           // handleClose(event, 'edit')
                           setAddText(!addText)
                         }}
                         sx={{
                           // backgroundColor: hexToRGBA('#666666', 0.9),
-                          width: '200px',
-                          color: '#f0f0f0',
-                          borderRadius: '4px',
-                          marginLeft: '2px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
+                          width: "200px",
+                          color: "#f0f0f0",
+                          borderRadius: "4px",
+                          marginLeft: "2px",
+                          display: "flex",
+                          justifyContent: "space-between",
                         }}
                         disabled={!image || !pdfFile}
                       >
                         Add text box
                         {addText ? (
                           <NextImage
-                            src='/green-dot.svg'
-                            alt='dot'
-                            width='15'
-                            height='15'
+                            src="/green-dot.svg"
+                            alt="dot"
+                            width="15"
+                            height="15"
                           />
                         ) : (
-                          ''
+                          ""
                         )}
                       </MenuItem>
                       <MenuItem
-                        onClick={event => {
+                        onClick={(event) => {
                           // handleClose(event, 'edit')
                           setIsSynced(!isSynced)
                         }}
                         disabled={!image}
                         sx={{
-                          width: '200px',
-                          color: '#f0f0f0',
-                          borderRadius: '4px',
-                          marginLeft: '2px',
-                          display: 'flex',
-                          justifyContent: 'space-between ',
+                          width: "200px",
+                          color: "#f0f0f0",
+                          borderRadius: "4px",
+                          marginLeft: "2px",
+                          display: "flex",
+                          justifyContent: "space-between ",
                         }}
                       >
                         <Typography>Sync scroll</Typography>
                         <Box>
                           {isSynced ? (
                             <NextImage
-                              src='/green-dot.svg'
-                              alt='dot'
-                              width='15'
-                              height='15'
+                              src="/green-dot.svg"
+                              alt="dot"
+                              width="15"
+                              height="15"
                             />
                           ) : (
-                            ''
+                            ""
                           )}
                         </Box>
                       </MenuItem>
@@ -1131,61 +1324,74 @@ const WorkSpace = () => {
            
           </SubWrapper> */}
           <Box
-            {...getRootProps({ className: 'dropzone' })}
-            id='upload'
-            className='hidden'
-            sx={{ display: 'none' }}
+            {...getRootProps({ className: "dropzone" })}
+            id="upload"
+            className="hidden"
+            sx={{ display: "none" }}
           >
             <input {...getInputProps()} ref={inputRef} />
             <Button>File upload</Button>
           </Box>
+          <Box id="upload-direct" className="hidden" sx={{ display: "none" }}>
+            <input
+              type="file"
+              accept=".psd,.psb,.png,.jpg,.jpeg,.pdf"
+              ref={inputRefDirect}
+              onChange={(e) => {
+                const files = e.target.files
+                if (files && files.length > 0) {
+                  handleFileOpenDirect(Array.from(files))
+                }
+              }}
+            />
+          </Box>
 
           {image || pdfFile ? (
             <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}
+              sx={{ display: "flex", justifyContent: "space-between", flex: 1 }}
             >
               <Box
                 sx={{
-                  display: 'flex',
+                  display: "flex",
 
-                  alignItems: 'center',
-                  gap: '10px',
+                  alignItems: "center",
+                  gap: "10px",
                 }}
               >
-                <Tooltip title='Sync scroll'>
+                <Tooltip title="Sync scroll">
                   <IconButton
                     onClick={() => setIsSynced(!isSynced)}
                     sx={{ padding: 0 }}
                   >
                     <Icon
-                      icon='fluent:phone-vertical-scroll-24-filled'
-                      fontSize='1.5rem'
-                      color={isSynced ? '#66FF66' : 'white'}
+                      icon="fluent:phone-vertical-scroll-24-filled"
+                      fontSize="1.5rem"
+                      color={isSynced ? "#66FF66" : "white"}
                     />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title='Add Textbox'>
+                <Tooltip title="Add Textbox">
                   <IconButton
                     onClick={() => setAddText(!addText)}
                     sx={{ padding: 0 }}
                   >
                     <Icon
-                      icon='cil:speech'
-                      fontSize='1.3rem'
-                      color={addText ? '#66FF66' : 'white'}
+                      icon="cil:speech"
+                      fontSize="1.3rem"
+                      color={addText ? "#66FF66" : "white"}
                     />
                   </IconButton>
                 </Tooltip>
               </Box>
               <Box
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginRight: '10px',
+                  display: "flex",
+                  alignItems: "center",
+                  marginRight: "10px",
                 }}
               >
-                <Typography color='white' fontWeight={500}>
-                  {file?.name ?? ''}
+                <Typography color="white" fontWeight={500}>
+                  {file?.name ?? ""}
                 </Typography>
               </Box>
             </Box>
@@ -1193,21 +1399,21 @@ const WorkSpace = () => {
         </Header>
 
         <Box
-          sx={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)' }}
+          sx={{ display: "flex", width: "100%", height: "calc(100vh - 70px)" }}
         >
           <Box
-            id='source'
+            id="source"
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: "flex",
+              flexDirection: "column",
               flex: 1,
               // height: '100vh',
-              maxWidth: '50vw',
-              margin: '0 auto',
-              overflow: 'auto',
+              maxWidth: "50vw",
+              margin: "0 auto",
+              overflow: "auto",
 
-              border: '1px solid',
-              '::-webkit-scrollbar': { display: 'none' },
+              border: "1px solid",
+              "::-webkit-scrollbar": { display: "none" },
             }}
           >
             {pdfFile ? (
@@ -1225,30 +1431,30 @@ const WorkSpace = () => {
           {/* <section>
           <div className='section-content'> */}
           <Box
-            id='target'
+            id="target"
             // ref={drop}
             ref={boundaryRef}
             onClick={handleClick}
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: "flex",
+              flexDirection: "column",
               flex: 1,
-              maxWidth: '50vw',
+              maxWidth: "50vw",
 
               // height: image ? image.height : '100%',
-              margin: '0 auto',
-              cursor: addText ? 'copy' : 'default',
-              position: 'relative',
-              overflow: 'auto',
+              margin: "0 auto",
+              cursor: addText ? "copy" : "default",
+              position: "relative",
+              overflow: "auto",
               // overflow: 'auto',
-              border: '1px solid',
+              border: "1px solid",
 
-              '::-webkit-scrollbar': {
-                display: 'none',
+              "::-webkit-scrollbar": {
+                display: "none",
               },
             }}
           >
-            {' '}
+            {" "}
             {pdfFile ? (
               <Document
                 file={file}
@@ -1259,7 +1465,7 @@ const WorkSpace = () => {
                 ))}
               </Document>
             ) : null}
-            {balloons.map(balloon => (
+            {balloons.map((balloon) => (
               // <Box id={`balloon-${balloon.idx}`} key={balloon.idx}>
               <Balloon
                 key={balloon.idx}
@@ -1313,12 +1519,12 @@ const Wrapper = styled.div`
 `
 
 const SubWrapper = styled.div<{ open: boolean }>`
-  display: ${p => (p.open ? 'block' : 'none')};
+  display: ${(p) => (p.open ? "block" : "none")};
   position: absolute;
   z-index: 10;
   top: 36px;
   width: 200px;
-  background-color: ${hexToRGBA('#666666', 0.9)};
+  background-color: ${hexToRGBA("#666666", 0.9)};
   color: #f0f0f0;
   border-radius: 4px;
   margin-left: 2px;
